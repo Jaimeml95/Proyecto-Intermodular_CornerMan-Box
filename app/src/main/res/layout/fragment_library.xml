@@ -21,9 +21,8 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="20dp"
         app:startIconDrawable="@android:drawable/ic_menu_search"
-        app:startIconTint="@color/on_surface_variant"
         app:hintEnabled="false"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
@@ -31,9 +30,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Buscar técnica (ej. Jab)"
-            android:textColorHint="@color/on_surface_variant"
+            android:textColorHint="#80FFFFFF"
             android:textColor="@color/white"
-            android:background="@color/surface_dark"
             android:inputType="text"/>
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -43,43 +41,60 @@
         android:scrollbars="none"
         android:layout_marginBottom="16dp">
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chip_group_filter"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:singleSelection="true"
-            app:selectionRequired="true">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <com.google.android.material.chip.Chip
-                style="@style/Widget.Material3.Chip.Filter"
+            <TextView
+                android:id="@+id/tv_cat_golpes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Golpes"
-                android:checked="true"
-                app:chipBackgroundColor="@color/green_boxing"
-                android:textColor="@color/white"/>
+                android:text="GOLPES"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingEnd="24dp"
+                android:clickable="true"
+                android:focusable="true"/>
 
-            <com.google.android.material.chip.Chip
-                style="@style/Widget.Material3.Chip.Filter"
+            <TextView
+                android:id="@+id/tv_cat_defensa"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Defensa"
-                android:textColor="@color/on_surface_variant"/>
+                android:text="DEFENSA"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingEnd="24dp"
+                android:clickable="true"
+                android:focusable="true"/>
 
-            <com.google.android.material.chip.Chip
-                style="@style/Widget.Material3.Chip.Filter"
+            <TextView
+                android:id="@+id/tv_cat_pasos"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Pasos"
-                android:textColor="@color/on_surface_variant"/>
+                android:text="PASOS"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingEnd="24dp"
+                android:clickable="true"
+                android:focusable="true"/>
 
-            <com.google.android.material.chip.Chip
-                style="@style/Widget.Material3.Chip.Filter"
+            <TextView
+                android:id="@+id/tv_cat_combos"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Combos"
-                android:textColor="@color/on_surface_variant"/>
-        </com.google.android.material.chip.ChipGroup>
+                android:text="COMBOS"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingEnd="24dp"
+                android:clickable="true"
+                android:focusable="true"/>
+        </LinearLayout>
     </HorizontalScrollView>
 
     <androidx.recyclerview.widget.RecyclerView
