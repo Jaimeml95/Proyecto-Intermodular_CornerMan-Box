@@ -1,4 +1,5 @@
 CornerMan Box 🥊
+
 CornerMan Box es una aplicación Android diseñada para optimizar el entrenamiento de boxeo de forma autónoma. El proyecto busca centralizar la gestión de tiempos, la formación técnica y la motivación del atleta en una única herramienta "manos libres".
 
 Este proyecto se desarrolla como Proyecto Intermodular para el Grado Superior en Desarrollo de Aplicaciones Multiplataforma (DAM).
