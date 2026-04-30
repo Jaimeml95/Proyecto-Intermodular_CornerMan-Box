@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -35,11 +36,12 @@ public class TimerService extends Service {
     private int mTotalRounds = 12;
     private boolean mIsResting = false;
 
-    private final int ROUND_DURATION = 180;
-    private final int REST_DURATION = 60;
-    private int mTimeLeft = ROUND_DURATION;
-    private boolean mFirstRoundCompleted = false; // Nos dirá si ha terminado al menos un asalto
+    private int mRoundDuration = 180;
+    private int mRestDuration = 60;
+    private int mTimeLeft = mRoundDuration;
+    private boolean mFirstRoundCompleted = false;
 
+    private MediaPlayer mpCampana; // Variable para el sonido
     private final Handler mHandler = new Handler();
 
     private final Runnable timerRunnable = new Runnable() {
@@ -66,12 +68,11 @@ public class TimerService extends Service {
     }
 
     private void cambiarDeFase() {
-        if (!mIsResting) {
-            // El asalto acaba de terminar y empieza el descanso
-            mIsResting = true;
-            mTimeLeft = REST_DURATION;
+        reproducirCampana(); // Suena al terminar asalto o descanso
 
-            // Activamos el testigo cuando se haya completado un asalto
+        if (!mIsResting) {
+            mIsResting = true;
+            mTimeLeft = mRestDuration;
             mFirstRoundCompleted = true;
         } else {
             mIsResting = false;
@@ -80,7 +81,7 @@ public class TimerService extends Service {
                 finalizarEntrenamiento();
                 return;
             }
-            mTimeLeft = ROUND_DURATION;
+            mTimeLeft = mRoundDuration;
         }
     }
 
@@ -118,12 +119,42 @@ public class TimerService extends Service {
 
     private void iniciarCronometro() {
         if (!isRunning) {
-            mCurrentRound = 1;
-            mIsResting = false;
-            mTimeLeft = ROUND_DURATION;
-            mFirstRoundCompleted = false; // Reseteamos aquí también el testigo por seguridad
-            isRunning = true;
-            mHandler.postDelayed(timerRunnable, 0);
+            // Abrimos un hilo para leer la configuración de la DB
+            new Thread(() -> {
+                AppDatabase db = Room.databaseBuilder(getApplicationContext(),
+                        AppDatabase.class, "cornerman-db").build();
+                Usuario user = db.usuarioDao().getUsuario();
+
+                if (user != null) {
+                    // Actualizamos las duraciones con lo que el usuario configuró
+                    mRoundDuration = user.roundDurationSeconds;
+                    mRestDuration = user.restDurationSeconds;
+                }
+                db.close();
+
+                // Una vez tenemos los datos, volvemos al hilo del Handler para empezar
+                mHandler.post(() -> {
+                    mCurrentRound = 1;
+                    mIsResting = false;
+                    mTimeLeft = mRoundDuration; // Empezamos con el tiempo personalizado
+                    mFirstRoundCompleted = false;
+                    isRunning = true;
+
+                    reproducirCampana(); // Campanazo de inicio
+
+                    mHandler.postDelayed(timerRunnable, 0);
+                });
+            }).start();
+        }
+    }
+
+    private void reproducirCampana() {
+        if (mpCampana != null) {
+            if (mpCampana.isPlaying()) {
+                mpCampana.pause();
+                mpCampana.seekTo(0);
+            }
+            mpCampana.start();
         }
     }
 
@@ -144,7 +175,6 @@ public class TimerService extends Service {
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
 
-        // SOLO si se ha completado al menos un asalto, guardamos en la DB
         if (mFirstRoundCompleted) {
             new Thread(() -> {
                 AppDatabase db = Room.databaseBuilder(getApplicationContext(),
@@ -152,56 +182,43 @@ public class TimerService extends Service {
                 Usuario user = db.usuarioDao().getUsuario();
 
                 if (user != null) {
-                user.totalPoints += 100;
+                    user.totalPoints += 100;
+                    Calendar calUltimo = Calendar.getInstance();
+                    calUltimo.setTimeInMillis(user.lastTrainingDate);
+                    calUltimo.set(Calendar.HOUR_OF_DAY, 0);
+                    calUltimo.set(Calendar.MINUTE, 0);
+                    calUltimo.set(Calendar.SECOND, 0);
+                    calUltimo.set(Calendar.MILLISECOND, 0);
 
-                // --- LÓGICA DE RACHA PARA API 24 (Calendar) ---
+                    Calendar calHoy = Calendar.getInstance();
+                    calHoy.set(Calendar.HOUR_OF_DAY, 0);
+                    calHoy.set(Calendar.MINUTE, 0);
+                    calHoy.set(Calendar.SECOND, 0);
+                    calHoy.set(Calendar.MILLISECOND, 0);
 
-                // Fecha del último entrenamiento (a medianoche)
-                Calendar calUltimo = Calendar.getInstance();
-                calUltimo.setTimeInMillis(user.lastTrainingDate);
-                calUltimo.set(Calendar.HOUR_OF_DAY, 0);
-                calUltimo.set(Calendar.MINUTE, 0);
-                calUltimo.set(Calendar.SECOND, 0);
-                calUltimo.set(Calendar.MILLISECOND, 0);
+                    long diffMillis = calHoy.getTimeInMillis() - calUltimo.getTimeInMillis();
+                    long diasDiferencia = diffMillis / (24 * 60 * 60 * 1000);
 
-                // Fecha de hoy (a medianoche)
-                Calendar calHoy = Calendar.getInstance();
-                calHoy.set(Calendar.HOUR_OF_DAY, 0);
-                calHoy.set(Calendar.MINUTE, 0);
-                calHoy.set(Calendar.SECOND, 0);
-                calHoy.set(Calendar.MILLISECOND, 0);
+                    if (diasDiferencia == 1) {
+                        user.dailyStreak++;
+                    } else if (diasDiferencia > 1) {
+                        user.dailyStreak = 1;
+                    }
 
-                // Calcular diferencia en milisegundos y pasar a días
-                long diffMillis = calHoy.getTimeInMillis() - calUltimo.getTimeInMillis();
-                long diasDiferencia = diffMillis / (24 * 60 * 60 * 1000);
-
-                if (diasDiferencia == 1) {
-                    // Es exactamente el día siguiente
-                    user.dailyStreak++;
-                } else if (diasDiferencia > 1) {
-                    // Ha pasado más de un día
-                    user.dailyStreak = 1;
+                    user.lastTrainingDate = System.currentTimeMillis();
+                    db.usuarioDao().updateUsuario(user);
+                } else {
+                    Usuario newUser = new Usuario();
+                    newUser.totalPoints = 100;
+                    newUser.dailyStreak = 1;
+                    newUser.lastTrainingDate = System.currentTimeMillis();
+                    db.usuarioDao().insertUsuario(newUser);
                 }
-                // Si la diferencia es 0 (mismo día), la racha se mantiene igual
-
-                user.lastTrainingDate = System.currentTimeMillis();
-                db.usuarioDao().updateUsuario(user);
-            } else {
-                // Crear nuevo usuario si la tabla está vacía
-                Usuario newUser = new Usuario();
-                newUser.totalPoints = 100;
-                newUser.dailyStreak = 1;
-                newUser.lastTrainingDate = System.currentTimeMillis();
-                db.usuarioDao().insertUsuario(newUser);
-            }
-            db.close();
-        }).start();
+                db.close();
+            }).start();
         }
 
-        // El testigo se resetea para la próxima sesión
         mFirstRoundCompleted = false;
-
-
         stopForeground(true);
         stopSelf();
     }
@@ -215,9 +232,26 @@ public class TimerService extends Service {
         sendBroadcast(intent);
     }
 
-    @Override public void onCreate() { super.onCreate(); createNotificationChannel(); }
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        createNotificationChannel();
+        // Inicializamos el MediaPlayer con el archivo campana.mp3 de res/raw
+        mpCampana = MediaPlayer.create(this, R.raw.campana);
+    }
+
     @Override public IBinder onBind(Intent intent) { return null; }
-    @Override public void onDestroy() { isRunning = false; super.onDestroy(); }
+
+    @Override
+    public void onDestroy() {
+        isRunning = false;
+        // Liberar el MediaPlayer para evitar fugas de memoria
+        if (mpCampana != null) {
+            mpCampana.release();
+            mpCampana = null;
+        }
+        super.onDestroy();
+    }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

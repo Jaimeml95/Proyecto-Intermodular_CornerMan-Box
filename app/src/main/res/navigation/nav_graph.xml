@@ -20,7 +20,13 @@
     <fragment
         android:id="@+id/navigation_library"
         android:name="com.jaimemoro.cornermanbox.ui.fragments.LibraryFragment"
-        android:label="Biblioteca Técnica"
+        android:label="Técnica"
         tools:layout="@layout/fragment_library" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.jaimemoro.cornermanbox.ui.fragments.SettingsFragment"
+        android:label="Ajustes"
+        tools:layout="@layout/fragment_settings" />
 
 </navigation>

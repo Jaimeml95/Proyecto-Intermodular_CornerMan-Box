@@ -2,6 +2,7 @@ package com.jaimemoro.cornermanbox.ui.activities;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar; // Importación necesaria para la barra de herramientas
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
@@ -17,7 +18,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Localizar el NavHostFragment (el contenedor de los fragments)
+        // Localizar la Toolbar y configurarla como la ActionBar de la actividad.
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        // Localizar el NavHostFragment
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.nav_host_fragment);
 
@@ -30,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Configuramos qué destinos son de nivel superior
             // Para que al usar el botón de "Empezar Ya" no haya problemas.
+            // También define en qué pantallas NO debe aparecer la flecha de "atrás" automáticamente.
             AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                     R.id.navigation_dashboard,
                     R.id.navigation_training,
@@ -39,6 +45,10 @@ public class MainActivity extends AppCompatActivity {
             // Vincular el menú inferior con el controlador de navegación
             // Esto hace que, al pulsar un botón del menú, se cargue el fragmento con el MISMO ID
             NavigationUI.setupWithNavController(bottomNav, navController);
+
+            // Vincular la Toolbar con el controlador de navegación y la configuración de nivel superior.
+            // Esto sincroniza el título de la barra con el nombre del fragmento y gestiona el menú superior.
+            NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         }
     }
 }
