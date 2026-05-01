@@ -1,19 +1,26 @@
 package com.jaimemoro.cornermanbox.ui.fragments;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.service.TimerService;
 
@@ -24,6 +31,20 @@ public class TrainingFragment extends Fragment {
     private boolean isRunning = false;
     private boolean hasStarted = false;
 
+    // Nueva forma de registrar la petición de permisos
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permiso concedido, arrancamos
+                    enviarAccionServicio(TimerService.ACTION_START);
+                } else {
+                    // Permiso denegado, avisamos al usuario
+                    Toast.makeText(getContext(), "Se necesita el micrófono para el control por voz", Toast.LENGTH_LONG).show();
+                    // Arrancamos de todos modos, aunque el control por voz no funcionará
+                    enviarAccionServicio(TimerService.ACTION_START);
+                }
+            });
+
     private final BroadcastReceiver timerReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -33,21 +54,15 @@ public class TrainingFragment extends Fragment {
                 boolean esDescanso = intent.getBooleanExtra("esDescanso", false);
                 isRunning = intent.getBooleanExtra("isRunning", false);
 
-                // Solucionado error no suena campana al inicio:
-                // Solo marcamos hasStarted como true si el cronómetro está en marcha
-                // o si el tiempo ya es distinto al de inicio (03:00 o 01:00).
-                // Si es 03:00 y no está corriendo, hasStarted será false.
                 if (isRunning || (!tiempo.equals("03:00") && !tiempo.equals("01:00"))) {
                     hasStarted = true;
                 } else {
                     hasStarted = false;
                 }
-                // --------------------------
 
                 tvCronometro.setText(tiempo);
                 tvRoundCount.setText(info);
 
-                // LÓGICA DE COLOR
                 if (!isRunning && !tiempo.equals("03:00") && !tiempo.equals("01:00")) {
                     tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.white));
                 } else {
@@ -72,7 +87,7 @@ public class TrainingFragment extends Fragment {
 
         timerContainer.setOnClickListener(v -> {
             if (!hasStarted) {
-                enviarAccionServicio(TimerService.ACTION_START);
+                verificarPermisoYEmpezar();
             } else if (isRunning) {
                 enviarAccionServicio(TimerService.ACTION_PAUSE);
             } else {
@@ -93,6 +108,16 @@ public class TrainingFragment extends Fragment {
         return root;
     }
 
+    private void verificarPermisoYEmpezar() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Usamos el nuevo lanzador en lugar de ActivityCompat.requestPermissions
+            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+        } else {
+            enviarAccionServicio(TimerService.ACTION_START);
+        }
+    }
+
     private void enviarAccionServicio(String accion) {
         Context context = getContext();
         if (context != null) {
@@ -111,14 +136,14 @@ public class TrainingFragment extends Fragment {
                 new IntentFilter(TimerService.TIMER_UPDATE),
                 androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
         );
-
-        // SOLICITUD DE ESTADO INICIAL: Evita el parpadeo y sincroniza si está pausado
         enviarAccionServicio(TimerService.ACTION_GET_STATUS);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        getContext().unregisterReceiver(timerReceiver);
+        if (getContext() != null) {
+            getContext().unregisterReceiver(timerReceiver);
+        }
     }
 }

@@ -6,7 +6,6 @@ import androidx.room.RoomDatabase;
 import android.content.Context;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 
-// Incrementamos la versión a 2 ya que el esquema cambió
 @Database(entities = {Usuario.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
 
@@ -20,7 +19,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "cornerman-db")
-                            .fallbackToDestructiveMigration() // Para que si no sabe que hacer borre la tabla y la cree de nuevo en vez de crashear.
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }
