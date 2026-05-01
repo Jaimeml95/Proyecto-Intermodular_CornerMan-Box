@@ -32,18 +32,25 @@ public class TrainingFragment extends Fragment {
                 String info = intent.getStringExtra("infoAsalto");
                 boolean esDescanso = intent.getBooleanExtra("esDescanso", false);
                 isRunning = intent.getBooleanExtra("isRunning", false);
-                hasStarted = true;
+
+                // Solucionado error no suena campana al inicio:
+                // Solo marcamos hasStarted como true si el cronómetro está en marcha
+                // o si el tiempo ya es distinto al de inicio (03:00 o 01:00).
+                // Si es 03:00 y no está corriendo, hasStarted será false.
+                if (isRunning || (!tiempo.equals("03:00") && !tiempo.equals("01:00"))) {
+                    hasStarted = true;
+                } else {
+                    hasStarted = false;
+                }
+                // --------------------------
 
                 tvCronometro.setText(tiempo);
                 tvRoundCount.setText(info);
 
-                // LÓGICA DE COLOR MEJORADA:
-                // Si el tiempo es el inicial (03:00 o 01:00) lo mostramos con color aunque no esté corriendo
+                // LÓGICA DE COLOR
                 if (!isRunning && !tiempo.equals("03:00") && !tiempo.equals("01:00")) {
-                    // Solo se pone blanco si está PAUSADO de verdad (a mitad de tiempo)
                     tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.white));
                 } else {
-                    // Verde o Rojo si está corriendo O si es el estado inicial "Ready"
                     if (esDescanso) {
                         tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.red_boxing));
                     } else {
