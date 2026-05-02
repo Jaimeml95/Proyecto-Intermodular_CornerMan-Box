@@ -4,27 +4,16 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
-import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.Log;
-
 import androidx.core.app.NotificationCompat;
-
-import java.util.ArrayList;
-
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.local.AppDatabase;
-import com.jaimemoro.cornermanbox.data.entities.Usuario;
+import com.jaimemoro.cornermanbox.repository.CornerManRepository;
 import com.jaimemoro.cornermanbox.utils.StatsManager;
 import com.jaimemoro.cornermanbox.utils.VoiceCommandHelper;
 
@@ -52,9 +41,8 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
     private boolean mFirstRoundCompleted = false;
 
     private MediaPlayer mpCampana;
-
-    // Variables de Voz
     private VoiceCommandHelper voiceHelper;
+    private CornerManRepository repository;
     private final Handler mHandler = new Handler();
 
     private final Runnable timerRunnable = new Runnable() {
@@ -78,7 +66,8 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         createNotificationChannel();
         mpCampana = MediaPlayer.create(this, R.raw.campana);
 
-        // Inicializamos el "oído"
+        // Inicializamos los colaboradores
+        repository = new CornerManRepository(getApplication());
         voiceHelper = new VoiceCommandHelper(this, this);
     }
 
@@ -139,10 +128,8 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
     private void iniciarCronometro() {
         if (!isRunning) {
-            new Thread(() -> {
-                AppDatabase db = AppDatabase.getInstance(getApplicationContext());
-                Usuario user = db.usuarioDao().getUsuario();
-
+            // Usamos el repositorio para obtener los tiempos configurados
+            repository.getUsuario(user -> {
                 if (user != null) {
                     mRoundDuration = user.roundDurationSeconds;
                     mRestDuration = user.restDurationSeconds;
@@ -158,8 +145,9 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
                     reproducirCampana();
                     voiceHelper.startListening();
                     mHandler.postDelayed(timerRunnable, 0);
+                    Log.d("TIMER", "Entrenamiento iniciado con éxito");
                 });
-            }).start();
+            });
         }
     }
     private void pausarCronometro() {
@@ -180,8 +168,11 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
 
-        voiceHelper.stopListening();
-
+        if (voiceHelper != null) {
+            voiceHelper.stopListening();
+        }
+        // Usamos el StatsManager para registrar el éxito
+        // Nota: Revisar si mover esto al repositorio en el futuro para limpiar mas el codigo
         if (mFirstRoundCompleted) {
             new Thread(() -> {
                 StatsManager.registrarEntrenamientoCompletado(getApplicationContext());

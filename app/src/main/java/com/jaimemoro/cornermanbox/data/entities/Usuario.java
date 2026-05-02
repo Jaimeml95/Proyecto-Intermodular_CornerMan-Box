@@ -1,6 +1,7 @@
 package com.jaimemoro.cornermanbox.data.entities;
 
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "usuario")
@@ -20,7 +21,7 @@ public class Usuario {
 
     public Usuario() {
     }
-
+@Ignore
     public Usuario(int id, int totalPoints, int dailyStreak, long lastTrainingDate,
                    String nombre, int roundDurationSeconds, int restDurationSeconds) {
         this.id = id;

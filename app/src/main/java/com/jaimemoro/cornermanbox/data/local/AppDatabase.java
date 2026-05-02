@@ -4,12 +4,18 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import android.content.Context;
+
+import com.jaimemoro.cornermanbox.data.entities.Entrenamiento;
+import com.jaimemoro.cornermanbox.data.entities.Tecnica;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 
-@Database(entities = {Usuario.class}, version = 2)
+// Incrementamos a versión 3 para que Room detecte el cambio de esquema
+@Database(entities = {Usuario.class, Entrenamiento.class, Tecnica.class}, version = 3, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract UsuarioDao usuarioDao();
+    public abstract EntrenamientoDao entrenamientoDao();
+    // public abstract TecnicaDao tecnicaDao(); // Descomentar cuando se cree TecnicaDao
 
     private static volatile AppDatabase INSTANCE;
 

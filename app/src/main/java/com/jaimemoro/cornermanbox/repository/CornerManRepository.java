@@ -22,7 +22,7 @@ public class CornerManRepository {
     public CornerManRepository(Application application) {
         AppDatabase db = AppDatabase.getInstance(application);
         usuarioDao = db.usuarioDao();
-        entrenamientoDao = db.entrenamientoDao();
+            entrenamientoDao = db.entrenamientoDao();
     }
 
     // --- OPERACIONES DE USUARIO ---
