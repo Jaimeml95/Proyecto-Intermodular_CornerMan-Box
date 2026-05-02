@@ -4,8 +4,10 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,7 +19,6 @@ import android.speech.SpeechRecognizer;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
-import androidx.room.Room;
 
 import java.util.ArrayList;
 
@@ -25,8 +26,9 @@ import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.data.local.AppDatabase;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 import com.jaimemoro.cornermanbox.utils.StatsManager;
+import com.jaimemoro.cornermanbox.utils.VoiceCommandHelper;
 
-public class TimerService extends Service {
+public class TimerService extends Service implements VoiceCommandHelper.VoiceCommandListener {
 
     public static final String ACTION_START = "START";
     public static final String ACTION_PAUSE = "PAUSE";
@@ -52,10 +54,7 @@ public class TimerService extends Service {
     private MediaPlayer mpCampana;
 
     // Variables de Voz
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechRecognizerIntent;
-    private boolean isListening = false;
-
+    private VoiceCommandHelper voiceHelper;
     private final Handler mHandler = new Handler();
 
     private final Runnable timerRunnable = new Runnable() {
@@ -78,6 +77,20 @@ public class TimerService extends Service {
         super.onCreate();
         createNotificationChannel();
         mpCampana = MediaPlayer.create(this, R.raw.campana);
+
+        // Inicializamos el "oído"
+        voiceHelper = new VoiceCommandHelper(this, this);
+    }
+
+    // Callback que viene del Helper
+    @Override
+    public void onCommandDetected(String comando) {
+        Log.d("VOICE", "Procesando: " + comando);
+        if (comando.contains("tiempo") || comando.contains("pausa")) {
+            pausarCronometro();
+        } else if (comando.contains("box") || comando.contains("vox") || comando.contains("continuar")) {
+            reanudarCronometro();
+        }
     }
 
     @Override
@@ -134,7 +147,6 @@ public class TimerService extends Service {
                     mRoundDuration = user.roundDurationSeconds;
                     mRestDuration = user.restDurationSeconds;
                 }
-                db.close();
 
                 mHandler.post(() -> {
                     mCurrentRound = 1;
@@ -144,79 +156,12 @@ public class TimerService extends Service {
                     isRunning = true;
 
                     reproducirCampana();
-                    iniciarReconocimientoVoz(); // Activamos el oído al empezar
+                    voiceHelper.startListening();
                     mHandler.postDelayed(timerRunnable, 0);
                 });
             }).start();
         }
     }
-
-    // --- LÓGICA DE CONTROL POR VOZ ---
-
-    private void iniciarReconocimientoVoz() {
-        if (speechRecognizer != null) return;
-
-        mHandler.post(() -> {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-            speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
-            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
-
-            speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) { Log.d("VOICE", "Listo para oír"); }
-                @Override public void onBeginningOfSpeech() {}
-                @Override public void onRmsChanged(float rmsdB) {}
-                @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() {}
-
-                @Override
-                public void onError(int error) {
-                    if (isListening) reiniciarEscucha();
-                }
-
-                @Override
-                public void onResults(Bundle results) {
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (matches != null && !matches.isEmpty()) {
-                        procesarComandoVoz(matches.get(0).toLowerCase());
-                    }
-                    if (isListening) reiniciarEscucha();
-                }
-
-                @Override public void onPartialResults(Bundle partialResults) {}
-                @Override public void onEvent(int eventType, Bundle params) {}
-            });
-
-            isListening = true;
-            speechRecognizer.startListening(speechRecognizerIntent);
-        });
-    }
-
-    private void reiniciarEscucha() {
-        if (speechRecognizer != null && isListening) {
-            speechRecognizer.cancel();
-            speechRecognizer.startListening(speechRecognizerIntent);
-        }
-    }
-
-    private void procesarComandoVoz(String comando) {
-        Log.d("VOICE", "Comando detectado: " + comando);
-        if (comando.contains("box")) {
-            if (!isRunning) {
-                reanudarCronometro();
-                actualizarInterfaz();
-            }
-        } else if (comando.contains("tiempo")) {
-            if (isRunning) {
-                pausarCronometro();
-                actualizarInterfaz();
-            }
-        }
-    }
-
-    // --- FIN LÓGICA DE VOZ ---
-
     private void pausarCronometro() {
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
@@ -227,25 +172,19 @@ public class TimerService extends Service {
         if (!isRunning) {
             isRunning = true;
             mHandler.postDelayed(timerRunnable, 0);
+            actualizarInterfaz();
         }
     }
 
     private void finalizarEntrenamiento() {
         isRunning = false;
-        isListening = false;
         mHandler.removeCallbacks(timerRunnable);
 
-        if (speechRecognizer != null) {
-            speechRecognizer.stopListening();
-            speechRecognizer.cancel();
-        }
+        voiceHelper.stopListening();
 
         if (mFirstRoundCompleted) {
             new Thread(() -> {
-                // Toda la magia ocurre aquí dentro de forma aislada
                 StatsManager.registrarEntrenamientoCompletado(getApplicationContext());
-
-                // Una vez terminado el trabajo sucio, cerramos el servicio
                 mHandler.post(() -> {
                     mFirstRoundCompleted = false;
                     stopForeground(true);
@@ -318,14 +257,12 @@ public class TimerService extends Service {
     @Override
     public void onDestroy() {
         isRunning = false;
-        isListening = false;
         if (mpCampana != null) {
             mpCampana.release();
             mpCampana = null;
         }
-        if (speechRecognizer != null) {
-            speechRecognizer.destroy();
-            speechRecognizer = null;
+        if (voiceHelper != null) {
+            voiceHelper.destroy(); // <--- Liberar recursos
         }
         super.onDestroy();
     }
