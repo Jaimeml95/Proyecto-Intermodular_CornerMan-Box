@@ -15,18 +15,18 @@ import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 import androidx.navigation.Navigation;
-import androidx.room.Room;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 import com.jaimemoro.cornermanbox.data.local.AppDatabase;
+import com.jaimemoro.cornermanbox.utils.StatsManager;
 
 import java.util.Calendar;
 
 public class DashboardFragment extends Fragment {
 
-    private TextView tvStreakCount, tvTotalPoints, tvNextSessionText;
+    private TextView tvStreakCount, tvTotalPoints, tvNextSessionText, tvGreeting;
     private ExtendedFloatingActionButton fabStart;
 
     @Nullable
@@ -39,6 +39,7 @@ public class DashboardFragment extends Fragment {
         tvTotalPoints = root.findViewById(R.id.tv_total_points);
         tvNextSessionText = root.findViewById(R.id.tv_next_session_text);
         fabStart = root.findViewById(R.id.fab_start_training);
+        tvGreeting = root.findViewById(R.id.tv_greeting);
 
         if (fabStart != null) {
             fabStart.setOnClickListener(v -> {
@@ -87,58 +88,45 @@ public class DashboardFragment extends Fragment {
 
     private void cargarEstadisticasUsuario() {
         new Thread(() -> {
-            AppDatabase db = Room.databaseBuilder(requireContext(),
-                    AppDatabase.class, "cornerman-db").build();
-
+            AppDatabase db = AppDatabase.getInstance(requireContext());
             Usuario user = db.usuarioDao().getUsuario();
 
+            // Delegamos la lógica de la racha al StatsManager
             if (user != null) {
-                // --- LÓGICA DE VERIFICACIÓN DE RACHA PARA API 24 (Calendar) ---
-                Calendar calUltimo = Calendar.getInstance();
-                calUltimo.setTimeInMillis(user.lastTrainingDate);
-                calUltimo.set(Calendar.HOUR_OF_DAY, 0);
-                calUltimo.set(Calendar.MINUTE, 0);
-                calUltimo.set(Calendar.SECOND, 0);
-                calUltimo.set(Calendar.MILLISECOND, 0);
-
-                Calendar calHoy = Calendar.getInstance();
-                calHoy.set(Calendar.HOUR_OF_DAY, 0);
-                calHoy.set(Calendar.MINUTE, 0);
-                calHoy.set(Calendar.SECOND, 0);
-                calHoy.set(Calendar.MILLISECOND, 0);
-
-                long diffMillis = calHoy.getTimeInMillis() - calUltimo.getTimeInMillis();
-                long diasDiferencia = diffMillis / (24 * 60 * 60 * 1000);
-
-                if (diasDiferencia > 1) {
-                    user.dailyStreak = 0;
-                    db.usuarioDao().updateUsuario(user);
-                }
+                StatsManager.validarRachaAlEntrar(user, db);
             }
 
             if (getActivity() != null) {
                 getActivity().runOnUiThread(() -> {
                     if (user != null) {
-                        // Manejo de singular/plural para la racha
-                        String textoRacha = (user.dailyStreak == 1)
-                                ? "1 Día entrenado"
-                                : user.dailyStreak + " Días seguidos";
+                        // Nombre y Saludo
+                        String nombreAMostrar = (user.nombre != null && !user.nombre.trim().isEmpty())
+                                ? user.nombre
+                                : "Boxeador";
 
+                        if (tvGreeting != null) tvGreeting.setText("¡Hola, " + nombreAMostrar + "!");
+
+                        // Racha
+                        String textoRacha = (user.dailyStreak == 1) ? "1 Día entrenado" : user.dailyStreak + " Días seguidos";
                         tvStreakCount.setText(textoRacha);
+
+                        // Puntos
                         tvTotalPoints.setText(String.format("%,d pts", user.totalPoints));
 
-                        // Saludo personalizado con el nombre guardado en Ajustes
-                        tvNextSessionText.setText("¡Mantén el ritmo, " + user.nombre + "!");
-
+                        // Texto de apoyo dinámico
                         if (user.dailyStreak == 0) {
-                            tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + user.nombre + "!");
+                            tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + nombreAMostrar + "!");
+                        } else {
+                            tvNextSessionText.setText("¡Mantén el ritmo, " + nombreAMostrar + "!");
                         }
+
                     } else {
+                        // Usuario nuevo
+                        if (tvGreeting != null) tvGreeting.setText("¡Hola, Boxeador!");
                         tvStreakCount.setText("0 Días seguidos");
                         tvTotalPoints.setText("0 pts");
                         tvNextSessionText.setText("¡Bienvenido! Empieza tu primer entreno.");
                     }
-                    db.close();
                 });
             }
         }).start();

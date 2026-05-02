@@ -64,4 +64,24 @@ public class StatsManager {
         newUser.lastTrainingDate = System.currentTimeMillis();
         db.usuarioDao().insertUsuario(newUser);
     }
+
+    public static void validarRachaAlEntrar(Usuario user, AppDatabase db) {
+        if (user == null) return;
+
+        Calendar calUltimo = Calendar.getInstance();
+        calUltimo.setTimeInMillis(user.lastTrainingDate);
+        normalizarFecha(calUltimo);
+
+        Calendar calHoy = Calendar.getInstance();
+        normalizarFecha(calHoy);
+
+        long diffMillis = calHoy.getTimeInMillis() - calUltimo.getTimeInMillis();
+        long diasDiferencia = diffMillis / (24 * 60 * 60 * 1000);
+
+        // Si ha pasado más de un día, la racha se ha perdido (0)
+        if (diasDiferencia > 1) {
+            user.dailyStreak = 0;
+            db.usuarioDao().updateUsuario(user);
+        }
+    }
 }
