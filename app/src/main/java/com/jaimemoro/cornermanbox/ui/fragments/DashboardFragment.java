@@ -19,15 +19,13 @@ import androidx.navigation.Navigation;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
-import com.jaimemoro.cornermanbox.data.local.AppDatabase;
-import com.jaimemoro.cornermanbox.utils.StatsManager;
-
-import java.util.Calendar;
+import com.jaimemoro.cornermanbox.repository.CornerManRepository;
 
 public class DashboardFragment extends Fragment {
 
     private TextView tvStreakCount, tvTotalPoints, tvNextSessionText, tvGreeting;
     private ExtendedFloatingActionButton fabStart;
+    private CornerManRepository repository;
 
     @Nullable
     @Override
@@ -35,11 +33,14 @@ public class DashboardFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_dashboard, container, false);
 
         // Inicializar vistas
+        tvGreeting = root.findViewById(R.id.tv_greeting);
         tvStreakCount = root.findViewById(R.id.tv_streak_count);
         tvTotalPoints = root.findViewById(R.id.tv_total_points);
         tvNextSessionText = root.findViewById(R.id.tv_next_session_text);
         fabStart = root.findViewById(R.id.fab_start_training);
-        tvGreeting = root.findViewById(R.id.tv_greeting);
+
+        // Inicializar el repositorio
+        repository = new CornerManRepository(requireActivity().getApplication());
 
         if (fabStart != null) {
             fabStart.setOnClickListener(v -> {
@@ -69,7 +70,6 @@ public class DashboardFragment extends Fragment {
 
             @Override
             public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
-                // Manejar el clic en el icono de engranaje
                 if (menuItem.getItemId() == R.id.settingsFragment) {
                     Navigation.findNavController(requireView()).navigate(R.id.settingsFragment);
                     return true;
@@ -82,53 +82,58 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Refresca los datos cada vez que el fragmento se hace visible
+        // Refresca los datos usando el repositorio
         cargarEstadisticasUsuario();
     }
 
     private void cargarEstadisticasUsuario() {
-        new Thread(() -> {
-            AppDatabase db = AppDatabase.getInstance(requireContext());
-            Usuario user = db.usuarioDao().getUsuario();
-
-            // Delegamos la lógica de la racha al StatsManager
-            if (user != null) {
-                StatsManager.validarRachaAlEntrar(user, db);
-            }
-
+        // Delegamos la carga al repositorio (él se encarga del hilo secundario)
+        repository.getUsuario(user -> {
+            // Importante: Como el repositorio usa un Executor,
+            // volvemos al hilo principal para tocar la UI.
             if (getActivity() != null) {
                 getActivity().runOnUiThread(() -> {
                     if (user != null) {
-                        // Nombre y Saludo
-                        String nombreAMostrar = (user.nombre != null && !user.nombre.trim().isEmpty())
-                                ? user.nombre
-                                : "Boxeador";
-
-                        if (tvGreeting != null) tvGreeting.setText("¡Hola, " + nombreAMostrar + "!");
-
-                        // Racha
-                        String textoRacha = (user.dailyStreak == 1) ? "1 Día entrenado" : user.dailyStreak + " Días seguidos";
-                        tvStreakCount.setText(textoRacha);
-
-                        // Puntos
-                        tvTotalPoints.setText(String.format("%,d pts", user.totalPoints));
-
-                        // Texto de apoyo dinámico
-                        if (user.dailyStreak == 0) {
-                            tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + nombreAMostrar + "!");
-                        } else {
-                            tvNextSessionText.setText("¡Mantén el ritmo, " + nombreAMostrar + "!");
-                        }
-
+                        actualizarInterfaz(user);
                     } else {
-                        // Usuario nuevo
-                        if (tvGreeting != null) tvGreeting.setText("¡Hola, Boxeador!");
-                        tvStreakCount.setText("0 Días seguidos");
-                        tvTotalPoints.setText("0 pts");
-                        tvNextSessionText.setText("¡Bienvenido! Empieza tu primer entreno.");
+                        configurarEstadoNuevoUsuario();
                     }
                 });
             }
-        }).start();
+        });
+    }
+
+    private void actualizarInterfaz(@NonNull Usuario user) {
+        // Nombre y Saludo
+        String nombreAMostrar = (user.nombre != null && !user.nombre.trim().isEmpty())
+                ? user.nombre
+                : "Boxeador";
+
+        if (tvGreeting != null) {
+            tvGreeting.setText("¡Hola, " + nombreAMostrar + "!");
+        }
+
+        // Racha
+        String textoRacha = (user.dailyStreak == 1)
+                ? "1 Día entrenado"
+                : user.dailyStreak + " Días seguidos";
+        tvStreakCount.setText(textoRacha);
+
+        // Puntos
+        tvTotalPoints.setText(String.format("%,d pts", user.totalPoints));
+
+        // Texto de apoyo dinámico
+        if (user.dailyStreak == 0) {
+            tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + nombreAMostrar + "!");
+        } else {
+            tvNextSessionText.setText("¡Mantén el ritmo, " + nombreAMostrar + "!");
+        }
+    }
+
+    private void configurarEstadoNuevoUsuario() {
+        if (tvGreeting != null) tvGreeting.setText("¡Hola, Boxeador!");
+        tvStreakCount.setText("0 Días seguidos");
+        tvTotalPoints.setText("0 pts");
+        tvNextSessionText.setText("¡Bienvenido! Empieza tu primer entreno.");
     }
 }
