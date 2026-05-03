@@ -44,6 +44,13 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
 
+    //Implementación para Spotify
+    // Spotify App Remote y Auth
+    implementation("com.spotify.android:auth:2.1.0")
+    implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
+    // Gson para manejar los metadatos de las canciones si fuera necesario
+    implementation("com.google.code.gson:gson:2.10.1")
+
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
