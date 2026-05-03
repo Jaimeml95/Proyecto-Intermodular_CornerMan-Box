@@ -16,6 +16,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Variables para Spotify Auth
+        manifestPlaceholders["redirectSchemeName"] = "cornermanbox"
+        manifestPlaceholders["redirectHostName"] = "callback"
     }
 
     buildTypes {

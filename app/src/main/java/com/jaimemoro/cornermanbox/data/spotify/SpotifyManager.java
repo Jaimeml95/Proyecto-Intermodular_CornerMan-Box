@@ -6,6 +6,8 @@ import android.util.Log;
 import com.spotify.android.appremote.api.ConnectionParams;
 import com.spotify.android.appremote.api.Connector;
 import com.spotify.android.appremote.api.SpotifyAppRemote;
+// Importante para detectar la canción
+import com.spotify.protocol.types.Track;
 
 public class SpotifyManager {
     private static final String TAG = "SpotifyManager";
@@ -38,6 +40,24 @@ public class SpotifyManager {
         });
     }
 
+    // --- NUEVO: MÉTODO PARA QUE EL FRAGMENT SE SUSCRIBA A LA CANCIÓN ---
+    public void suscribirseACancion(TrackCallback callback) {
+        if (mSpotifyAppRemote == null || !mSpotifyAppRemote.isConnected()) {
+            Log.e(TAG, "No se puede suscribir: Remote no conectado");
+            return;
+        }
+
+        mSpotifyAppRemote.getPlayerApi()
+                .subscribeToPlayerState()
+                .setEventCallback(playerState -> {
+                    Track track = playerState.track;
+                    if (track != null && callback != null) {
+                        // Avisamos al Fragment con el nombre y artista
+                        callback.onTrackChanged(track.name, track.artist.name);
+                    }
+                });
+    }
+
     // --- ACCIONES DE BOXEO ---
 
     public void reproducirMusica(String spotifyUri) {
@@ -65,8 +85,15 @@ public class SpotifyManager {
         }
     }
 
+    // --- INTERFACES ---
+
     public interface SpotifyConnectionListener {
         void onConnected();
         void onFailure(Throwable error);
+    }
+
+    // Nueva interfaz para enviar datos al Fragment
+    public interface TrackCallback {
+        void onTrackChanged(String titulo, String artista);
     }
 }

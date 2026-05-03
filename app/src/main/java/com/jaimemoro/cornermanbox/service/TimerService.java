@@ -11,11 +11,14 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
+
 import androidx.core.app.NotificationCompat;
+
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.repository.CornerManRepository;
 import com.jaimemoro.cornermanbox.utils.StatsManager;
 import com.jaimemoro.cornermanbox.utils.VoiceCommandHelper;
+import com.jaimemoro.cornermanbox.data.spotify.SpotifyManager;
 
 public class TimerService extends Service implements VoiceCommandHelper.VoiceCommandListener {
 
@@ -26,23 +29,22 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
     public static final String ACTION_STOP = "STOP";
     public static final String ACTION_GET_STATUS = "GET_STATUS";
     public static final String TIMER_UPDATE = "com.jaimemoro.cornermanbox.TIMER_UPDATE";
-
     private static final String CHANNEL_ID = "TimerServiceChannel";
+
     private static final int NOTIFICATION_ID = 1;
     private boolean isRunning = false;
-
     private int mCurrentRound = 1;
     private int mTotalRounds = 12;
     private boolean mIsResting = false;
-
     private int mRoundDuration = 180;
     private int mRestDuration = 60;
     private int mTimeLeft = mRoundDuration;
     private boolean mFirstRoundCompleted = false;
-
     private MediaPlayer mpCampana;
     private VoiceCommandHelper voiceHelper;
     private CornerManRepository repository;
+    private SpotifyManager spotifyManager;
+    private boolean isListening = false; // Para el indicador de voz en el Fragment
     private final Handler mHandler = new Handler();
 
     private final Runnable timerRunnable = new Runnable() {
@@ -69,6 +71,11 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         // Inicializamos los colaboradores
         repository = new CornerManRepository(getApplication());
         voiceHelper = new VoiceCommandHelper(this, this);
+        spotifyManager = new SpotifyManager(this);
+
+        // Intentamos la conexión inicial.
+        // Al pasarle 'null', la conexión se gestiona internamente
+        spotifyManager.conectar(null);
     }
 
     // Callback que viene del Helper
@@ -144,12 +151,14 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
                     reproducirCampana();
                     voiceHelper.startListening();
+                    isListening = true; // El micro empieza a escuchar
                     mHandler.postDelayed(timerRunnable, 0);
                     Log.d("TIMER", "Entrenamiento iniciado con éxito");
                 });
             });
         }
     }
+
     private void pausarCronometro() {
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
@@ -170,7 +179,9 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
         if (voiceHelper != null) {
             voiceHelper.stopListening();
+            isListening = false; // El micro deja de escuchar
         }
+        actualizarInterfaz(); // Para que el fragmento sepa que el micro se apagó
         // Usamos el StatsManager para registrar el éxito
         // Nota: Revisar si mover esto al repositorio en el futuro para limpiar mas el codigo
         if (mFirstRoundCompleted) {
@@ -191,18 +202,34 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
     private void cambiarDeFase() {
         reproducirCampana();
+
         if (!mIsResting) {
+            // --- ENTRANDO EN DESCANSO ---
             mIsResting = true;
             mTimeLeft = mRestDuration;
             mFirstRoundCompleted = true;
+
+            // Bajamos el volumen para que el boxeador pueda escuchar instrucciones o recuperar aire
+            if (spotifyManager != null) {
+                spotifyManager.ajustarVolumen(0.3f);
+            }
+
         } else {
+            // --- EMPEZANDO NUEVO ASALTO ---
             mIsResting = false;
             mCurrentRound++;
+
             if (mCurrentRound > mTotalRounds) {
                 finalizarEntrenamiento();
                 return;
             }
+
             mTimeLeft = mRoundDuration;
+
+            // Subimos el volumen de nuevo
+            if (spotifyManager != null) {
+                spotifyManager.ajustarVolumen(1.0f);
+            }
         }
     }
 
@@ -230,6 +257,10 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         intent.putExtra("infoAsalto", infoAsalto);
         intent.putExtra("esDescanso", esDescanso);
         intent.putExtra("isRunning", isRunning);
+
+        // Enviamos si el micro está activo
+        intent.putExtra("isListening", isListening);
+
         sendBroadcast(intent);
     }
 
@@ -243,18 +274,29 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         }
     }
 
-    @Override public IBinder onBind(Intent intent) { return null; }
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
     @Override
     public void onDestroy() {
         isRunning = false;
+
+        // Desconexión de Spotify
+        if (spotifyManager != null) {
+            spotifyManager.desconectar();
+        }
+
         if (mpCampana != null) {
             mpCampana.release();
             mpCampana = null;
         }
+
         if (voiceHelper != null) {
-            voiceHelper.destroy(); // <--- Liberar recursos
+            voiceHelper.destroy();
         }
+
         super.onDestroy();
     }
 }

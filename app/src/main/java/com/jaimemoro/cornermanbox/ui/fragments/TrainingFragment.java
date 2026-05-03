@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout; // Nuevo
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,26 +22,28 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.card.MaterialCardView; // Nuevo
 import com.jaimemoro.cornermanbox.R;
+import com.jaimemoro.cornermanbox.data.spotify.SpotifyManager; // Tu nueva clase
 import com.jaimemoro.cornermanbox.service.TimerService;
 
 public class TrainingFragment extends Fragment {
 
     private FrameLayout timerContainer;
-    private TextView tvCronometro, tvRoundCount;
+    private TextView tvCronometro, tvRoundCount, tvSongTitle;
+    private MaterialCardView musicControlCard;
+    private LinearLayout voiceIndicator;
+    private SpotifyManager spotifyManager;
+
     private boolean isRunning = false;
     private boolean hasStarted = false;
 
-    // Nueva forma de registrar la petición de permisos
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    // Permiso concedido, arrancamos
                     enviarAccionServicio(TimerService.ACTION_START);
                 } else {
-                    // Permiso denegado, avisamos al usuario
                     Toast.makeText(getContext(), "Se necesita el micrófono para el control por voz", Toast.LENGTH_LONG).show();
-                    // Arrancamos de todos modos, aunque el control por voz no funcionará
                     enviarAccionServicio(TimerService.ACTION_START);
                 }
             });
@@ -54,6 +57,9 @@ public class TrainingFragment extends Fragment {
                 boolean esDescanso = intent.getBooleanExtra("esDescanso", false);
                 isRunning = intent.getBooleanExtra("isRunning", false);
 
+                // Pendiente de añadir al Service
+                boolean isListening = intent.getBooleanExtra("isListening", false);
+
                 if (isRunning || (!tiempo.equals("03:00") && !tiempo.equals("01:00"))) {
                     hasStarted = true;
                 } else {
@@ -63,14 +69,14 @@ public class TrainingFragment extends Fragment {
                 tvCronometro.setText(tiempo);
                 tvRoundCount.setText(info);
 
+                // Control del indicador de voz
+                voiceIndicator.setVisibility(isListening ? View.VISIBLE : View.INVISIBLE);
+
                 if (!isRunning && !tiempo.equals("03:00") && !tiempo.equals("01:00")) {
                     tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.white));
                 } else {
-                    if (esDescanso) {
-                        tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.red_boxing));
-                    } else {
-                        tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.green_boxing));
-                    }
+                    tvCronometro.setTextColor(ContextCompat.getColor(context,
+                            esDescanso ? R.color.red_boxing : R.color.green_boxing));
                 }
             }
         }
@@ -81,9 +87,18 @@ public class TrainingFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_training, container, false);
 
+        // Inicializar vistas existentes
         timerContainer = root.findViewById(R.id.timer_container);
         tvCronometro = root.findViewById(R.id.tv_timer_display);
         tvRoundCount = root.findViewById(R.id.tv_round_count);
+
+        // Inicializar nuevas vistas
+        musicControlCard = root.findViewById(R.id.music_control_card);
+        tvSongTitle = root.findViewById(R.id.tv_song_title);
+        voiceIndicator = root.findViewById(R.id.voice_indicator);
+
+        // Configurar Spotify
+        setupSpotify();
 
         timerContainer.setOnClickListener(v -> {
             if (!hasStarted) {
@@ -100,7 +115,7 @@ public class TrainingFragment extends Fragment {
             isRunning = false;
             hasStarted = false;
             tvCronometro.setText("03:00");
-            tvCronometro.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
+            tvCronometro.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
             tvRoundCount.setText("ASALTO 1 / 12");
             return true;
         });
@@ -108,10 +123,44 @@ public class TrainingFragment extends Fragment {
         return root;
     }
 
+    private void setupSpotify() {
+        spotifyManager = new SpotifyManager(requireActivity());
+        spotifyManager.conectar(new SpotifyManager.SpotifyConnectionListener() {
+            @Override
+            public void onConnected() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // Hacemos visible la tarjeta
+                        musicControlCard.setVisibility(View.VISIBLE);
+                        tvSongTitle.setText("Spotify: Conectado");
+
+                        // Nos suscribimos a los cambios de canción usando el Manager
+                        spotifyManager.suscribirseACancion((titulo, artista) -> {
+                            // Spotify avisa en un hilo secundario, volvemos al principal para la UI
+                            if (getActivity() != null) {
+                                getActivity().runOnUiThread(() -> {
+                                    tvSongTitle.setText(titulo + " - " + artista);
+                                });
+                            }
+                        });
+                    });
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        musicControlCard.setVisibility(View.GONE);
+                    });
+                }
+            }
+        });
+    }
+
     private void verificarPermisoYEmpezar() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            // Usamos el nuevo lanzador en lugar de ActivityCompat.requestPermissions
             requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
         } else {
             enviarAccionServicio(TimerService.ACTION_START);
@@ -130,11 +179,11 @@ public class TrainingFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        androidx.core.content.ContextCompat.registerReceiver(
-                getContext(),
+        ContextCompat.registerReceiver(
+                requireContext(),
                 timerReceiver,
                 new IntentFilter(TimerService.TIMER_UPDATE),
-                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+                ContextCompat.RECEIVER_NOT_EXPORTED
         );
         enviarAccionServicio(TimerService.ACTION_GET_STATUS);
     }
@@ -143,7 +192,15 @@ public class TrainingFragment extends Fragment {
     public void onPause() {
         super.onPause();
         if (getContext() != null) {
-            getContext().unregisterReceiver(timerReceiver);
+            requireContext().unregisterReceiver(timerReceiver);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (spotifyManager != null) {
+            spotifyManager.desconectar();
         }
     }
 }
