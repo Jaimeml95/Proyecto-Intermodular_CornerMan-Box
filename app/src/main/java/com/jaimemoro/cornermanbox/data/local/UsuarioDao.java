@@ -14,7 +14,7 @@ public interface UsuarioDao {
     Usuario getUsuario();
 
     @Insert
-    void insertUsuario(Usuario usuario); // <--- ESTA ES LA LÍNEA QUE FALTA
+    void insertUsuario(Usuario usuario);
 
     @Update
     void updateUsuario(Usuario usuario);

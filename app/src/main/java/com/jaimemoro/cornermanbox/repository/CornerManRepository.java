@@ -2,10 +2,12 @@ package com.jaimemoro.cornermanbox.repository;
 
 import android.app.Application;
 import com.jaimemoro.cornermanbox.data.entities.Entrenamiento;
+import com.jaimemoro.cornermanbox.data.entities.Tecnica; // Nueva entidad
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 import com.jaimemoro.cornermanbox.data.local.AppDatabase;
 import com.jaimemoro.cornermanbox.data.local.EntrenamientoDao;
 import com.jaimemoro.cornermanbox.data.local.UsuarioDao;
+import com.jaimemoro.cornermanbox.data.local.TecnicaDao; // Nuevo DAO
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -15,14 +17,15 @@ public class CornerManRepository {
 
     private final UsuarioDao usuarioDao;
     private final EntrenamientoDao entrenamientoDao;
+    private final TecnicaDao tecnicaDao; // Añadido
 
-    // Un solo executor para todas las tareas de base de datos de la app
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     public CornerManRepository(Application application) {
         AppDatabase db = AppDatabase.getInstance(application);
         usuarioDao = db.usuarioDao();
-            entrenamientoDao = db.entrenamientoDao();
+        entrenamientoDao = db.entrenamientoDao();
+        tecnicaDao = db.tecnicaDao(); // Inicializado
     }
 
     // --- OPERACIONES DE USUARIO ---
@@ -49,6 +52,26 @@ public class CornerManRepository {
             List<Entrenamiento> historial = entrenamientoDao.getAllEntrenamientos();
             callback.onComplete(historial);
         });
+    }
+
+    // --- OPERACIONES DE TÉCNICA (NUEVO) ---
+
+    public void getAllTecnicas(RepositoryCallback<List<Tecnica>> callback) {
+        executorService.execute(() -> {
+            List<Tecnica> tecnicas = tecnicaDao.obtenerTodas();
+            callback.onComplete(tecnicas);
+        });
+    }
+
+    public void getTecnicasByCategoria(String categoria, RepositoryCallback<List<Tecnica>> callback) {
+        executorService.execute(() -> {
+            List<Tecnica> filtradas = tecnicaDao.obtenerPorCategoria(categoria);
+            callback.onComplete(filtradas);
+        });
+    }
+
+    public void insertTecnicas(List<Tecnica> listaTecnicas) {
+        executorService.execute(() -> tecnicaDao.insertarVarias(listaTecnicas));
     }
 
     // --- INTERFAZ PARA RETORNAR DATOS ---
