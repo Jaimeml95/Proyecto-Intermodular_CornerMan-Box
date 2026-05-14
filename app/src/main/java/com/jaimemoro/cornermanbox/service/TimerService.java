@@ -133,11 +133,11 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
                     reanudarCronometro();
                     break;
                 case ACTION_GET_STATUS:
-                    // 🎯 CAMBIO 3: Aseguramos que al pedir estatus, refresque de la DB
+                    // Aseguramos que al pedir estatus, refresque de la DB
                     cargarConfiguracionBase(null);
                     break;
                 case ACTION_RESET:
-                    // 🎯 CAMBIO 4: El Reset ya no mata el servicio, solo lo reinicia visualmente
+                    // El Reset ya no mata el servicio, solo lo reinicia visualmente
                     resetearCronometro();
                     break;
                 case ACTION_STOP:
@@ -182,6 +182,8 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
     }
 
     private void resetearCronometro() {
+        // Sumar puntos si ha completado al menos un asalto
+        registrarProgreso();
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
         mCurrentRound = 1;
@@ -214,31 +216,33 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         }
     }
 
+    private void registrarProgreso() {
+        if (mFirstRoundCompleted) {
+            new Thread(() -> {
+                Log.d("TIMER", "Registrando entrenamiento completado...");
+                StatsManager.registrarEntrenamientoCompletado(getApplicationContext());
+                // Importante: una vez sumados los puntos, reseteamos el flag
+                mFirstRoundCompleted = false;
+            }).start();
+        }
+    }
+
     private void finalizarEntrenamiento() {
         isRunning = false;
         mHandler.removeCallbacks(timerRunnable);
 
         if (voiceHelper != null) {
             voiceHelper.stopListening();
-            isListening = false; // El micro deja de escuchar
+            isListening = false;
         }
-        actualizarInterfaz(); // Para que el fragmento sepa que el micro se apagó
-        // Usamos el StatsManager para registrar el éxito
-        // Nota: Revisar si mover esto al repositorio en el futuro para limpiar mas el codigo
-        if (mFirstRoundCompleted) {
-            new Thread(() -> {
-                StatsManager.registrarEntrenamientoCompletado(getApplicationContext());
-                mHandler.post(() -> {
-                    mFirstRoundCompleted = false;
-                    stopForeground(true);
-                    stopSelf();
-                });
-            }).start();
-        } else {
-            mFirstRoundCompleted = false;
-            stopForeground(true);
-            stopSelf();
-        }
+
+        // Sumar puntos
+        registrarProgreso();
+
+        // Cerrar el servicio definitivamente
+        actualizarInterfaz();
+        stopForeground(true);
+        stopSelf();
     }
 
     private void cambiarDeFase() {
@@ -249,16 +253,16 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
             mIsResting = true;
             mTimeLeft = mRestDuration;
             mFirstRoundCompleted = true;
+            mCurrentRound++;
 
-            // Bajamos el volumen para que el boxeador pueda escuchar instrucciones o recuperar aire
+            // Bajamos el volumen para dar sensación de descanso.
             if (spotifyManager != null) {
-                spotifyManager.ajustarVolumen(0.3f);
+                spotifyManager.ajustarVolumen(0.5f);
             }
 
         } else {
             // --- EMPEZANDO NUEVO ASALTO ---
             mIsResting = false;
-            mCurrentRound++;
 
             if (mCurrentRound > mTotalRounds) {
                 finalizarEntrenamiento();
