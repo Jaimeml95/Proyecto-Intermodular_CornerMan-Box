@@ -56,27 +56,26 @@ public class TrainingFragment extends Fragment {
                 String info = intent.getStringExtra("infoAsalto");
                 boolean esDescanso = intent.getBooleanExtra("esDescanso", false);
                 isRunning = intent.getBooleanExtra("isRunning", false);
-
-                // Pendiente de añadir al Service
                 boolean isListening = intent.getBooleanExtra("isListening", false);
-
-                if (isRunning || (!tiempo.equals("03:00") && !tiempo.equals("01:00"))) {
-                    hasStarted = true;
-                } else {
-                    hasStarted = false;
-                }
+                boolean isReady = intent.getBooleanExtra("isReady", false);
 
                 tvCronometro.setText(tiempo);
                 tvRoundCount.setText(info);
-
-                // Control del indicador de voz
                 voiceIndicator.setVisibility(isListening ? View.VISIBLE : View.INVISIBLE);
 
-                if (!isRunning && !tiempo.equals("03:00") && !tiempo.equals("01:00")) {
+                // Lógica de "hasStarted" (Control de botones Play/Pause)
+                // Solo es "false" si no está corriendo Y está en el estado inicial (isReady)
+                // Si has pausado a mitad (!isRunning y !isReady), hasStarted sigue siendo true
+                hasStarted = isRunning || !isReady;
+
+                // Lógica de Colores
+                if (!isRunning && !isReady) {
+                    // ESTADO: Pausado a mitad de un round -> Blanco
                     tvCronometro.setTextColor(ContextCompat.getColor(context, R.color.white));
                 } else {
-                    tvCronometro.setTextColor(ContextCompat.getColor(context,
-                            esDescanso ? R.color.red_boxing : R.color.green_boxing));
+                    // ESTADO: Corriendo o Listo para empezar -> Color Neón (Verde/Rojo)
+                    int color = esDescanso ? R.color.red_boxing : R.color.green_boxing;
+                    tvCronometro.setTextColor(ContextCompat.getColor(context, color));
                 }
             }
         }

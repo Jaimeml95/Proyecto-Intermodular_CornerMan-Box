@@ -11,7 +11,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
-import androidx.room.Room;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -19,11 +18,14 @@ import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.data.entities.Usuario;
 import com.jaimemoro.cornermanbox.data.local.AppDatabase;
 
+import java.util.concurrent.Executors;
+
 public class SettingsFragment extends Fragment {
 
     private TextInputEditText etNombre, etRoundTime, etRestTime;
     private MaterialButton btnGuardar;
     private AppDatabase db;
+    private Usuario usuarioActual; // Guardamos una referencia local
 
     @Nullable
     @Override
@@ -35,7 +37,8 @@ public class SettingsFragment extends Fragment {
         etRestTime = view.findViewById(R.id.etRestTime);
         btnGuardar = view.findViewById(R.id.btnGuardar);
 
-        db = Room.databaseBuilder(requireContext(), AppDatabase.class, "cornerman-db").build();
+        // USAMOS EL SINGLETON (Importante para evitar errores de integridad)
+        db = AppDatabase.getInstance(requireContext());
 
         cargarDatosActuales();
 
@@ -45,18 +48,25 @@ public class SettingsFragment extends Fragment {
     }
 
     private void cargarDatosActuales() {
-        new Thread(() -> {
-            Usuario user = db.usuarioDao().getUsuario();
-            if (user != null) {
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        etNombre.setText(user.nombre);
-                        etRoundTime.setText(String.valueOf(user.roundDurationSeconds));
-                        etRestTime.setText(String.valueOf(user.restDurationSeconds));
-                    });
-                }
+        Executors.newSingleThreadExecutor().execute(() -> {
+            usuarioActual = db.usuarioDao().getUsuario();
+
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (usuarioActual != null) {
+                        // Si existe, ponemos sus datos
+                        etNombre.setText(usuarioActual.nombre);
+                        etRoundTime.setText(String.valueOf(usuarioActual.roundDurationSeconds));
+                        etRestTime.setText(String.valueOf(usuarioActual.restDurationSeconds));
+                    } else {
+                        // Si es null (primer inicio), ponemos los valores por defecto manuales
+                        etNombre.setText("Boxeador");
+                        etRoundTime.setText("180");
+                        etRestTime.setText("60");
+                    }
+                });
             }
-        }).start();
+        });
     }
 
     private void guardarAjustes() {
@@ -69,33 +79,35 @@ public class SettingsFragment extends Fragment {
             return;
         }
 
-        new Thread(() -> {
-            Usuario user = db.usuarioDao().getUsuario();
-            if (user != null) {
-                user.nombre = nombre;
-                user.roundDurationSeconds = Integer.parseInt(rTime);
-                user.restDurationSeconds = Integer.parseInt(dTime);
-                db.usuarioDao().updateUsuario(user);
-
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        // Escondemos el teclado para que no moleste en la siguiente pantalla
-                        ocultarTeclado();
-
-                        // Avisamos al usuario
-                        Toast.makeText(getContext(), "Ajustes guardados correctamente", Toast.LENGTH_SHORT).show();
-
-                        // Volvemos automáticamente al fragmento anterior (Dashboard)
-                        Navigation.findNavController(requireView()).navigateUp();
-                    });
-                }
+        Executors.newSingleThreadExecutor().execute(() -> {
+            // Si el usuario no existe todavía en la DB, creamos uno nuevo
+            if (usuarioActual == null) {
+                usuarioActual = new Usuario();
             }
-        }).start();
+
+            usuarioActual.nombre = nombre;
+            usuarioActual.roundDurationSeconds = Integer.parseInt(rTime);
+            usuarioActual.restDurationSeconds = Integer.parseInt(dTime);
+
+            // Insertamos o actualizamos según corresponda
+            if (usuarioActual.id == 0) {
+                db.usuarioDao().insertUsuario(usuarioActual);
+            } else {
+                db.usuarioDao().updateUsuario(usuarioActual);
+            }
+
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    ocultarTeclado();
+                    Toast.makeText(getContext(), "Ajustes guardados correctamente", Toast.LENGTH_SHORT).show();
+
+                    // VOLVER AL DASHBOARD
+                    Navigation.findNavController(requireView()).navigateUp();
+                });
+            }
+        });
     }
 
-    /**
-     * Método auxiliar para cerrar el teclado virtual de forma limpia.
-     */
     private void ocultarTeclado() {
         View view = getActivity().getCurrentFocus();
         if (view != null) {

@@ -72,10 +72,39 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         repository = new CornerManRepository(getApplication());
         voiceHelper = new VoiceCommandHelper(this, this);
         spotifyManager = new SpotifyManager(this);
-
-        // Intentamos la conexión inicial.
-        // Al pasarle 'null', la conexión se gestiona internamente
         spotifyManager.conectar(null);
+        // Cargar la configuración nada más nacer el servicio
+        cargarConfiguracionBase(null);
+    }
+
+    /**
+     * Carga los tiempos de la DB y refresca la interfaz sin empezar el crono.
+     */
+    private void cargarConfiguracionBase(Runnable postConfig) {
+        repository.getUsuario(user -> {
+            if (user != null) {
+                mRoundDuration = user.roundDurationSeconds;
+                mRestDuration = user.restDurationSeconds;
+
+                // Solo sincronizamos mTimeLeft si:
+                // No está corriendo.
+                // Es el primer asalto y no estamos descansando.
+                // El tiempo está intacto (es igual al total, o es el valor inicial 180, o está en 0).
+                if (!isRunning && mCurrentRound == 1 && !mIsResting && !mFirstRoundCompleted) {
+                    if (mTimeLeft == 0 || mTimeLeft == 180 || mTimeLeft == mRoundDuration) {
+                        mTimeLeft = mRoundDuration;
+                    }
+                }
+            } else {
+                // Valores de emergencia por si la DB falla
+                mRoundDuration = 180;
+                mRestDuration = 60;
+                if (!isRunning && mCurrentRound == 1) mTimeLeft = 180;
+            }
+
+            actualizarInterfaz();
+            if (postConfig != null) postConfig.run();
+        });
     }
 
     // Callback que viene del Helper
@@ -104,9 +133,13 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
                     reanudarCronometro();
                     break;
                 case ACTION_GET_STATUS:
-                    actualizarInterfaz();
+                    // 🎯 CAMBIO 3: Aseguramos que al pedir estatus, refresque de la DB
+                    cargarConfiguracionBase(null);
                     break;
                 case ACTION_RESET:
+                    // 🎯 CAMBIO 4: El Reset ya no mata el servicio, solo lo reinicia visualmente
+                    resetearCronometro();
+                    break;
                 case ACTION_STOP:
                     finalizarEntrenamiento();
                     return START_NOT_STICKY;
@@ -135,28 +168,36 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
     private void iniciarCronometro() {
         if (!isRunning) {
-            // Usamos el repositorio para obtener los tiempos configurados
-            repository.getUsuario(user -> {
-                if (user != null) {
-                    mRoundDuration = user.roundDurationSeconds;
-                    mRestDuration = user.restDurationSeconds;
-                }
-
+            // Recargamos por si cambió algo en Settings justo antes de dar Start
+            cargarConfiguracionBase(() -> {
                 mHandler.post(() -> {
-                    mCurrentRound = 1;
-                    mIsResting = false;
-                    mTimeLeft = mRoundDuration;
-                    mFirstRoundCompleted = false;
                     isRunning = true;
-
                     reproducirCampana();
                     voiceHelper.startListening();
-                    isListening = true; // El micro empieza a escuchar
+                    isListening = true;
                     mHandler.postDelayed(timerRunnable, 0);
-                    Log.d("TIMER", "Entrenamiento iniciado con éxito");
                 });
             });
         }
+    }
+
+    private void resetearCronometro() {
+        isRunning = false;
+        mHandler.removeCallbacks(timerRunnable);
+        mCurrentRound = 1;
+        mIsResting = false;
+        mFirstRoundCompleted = false;
+
+        // Apagamos el micrófono al reiniciar
+        if (voiceHelper != null) {
+            voiceHelper.stopListening();
+            isListening = false; // Esto hará que el icono del micro desaparezca en el Fragment
+        }
+
+        // Forzamos el valor a 0 para que cargarConfiguracionBase sincronice con la DB
+        mTimeLeft = 0;
+
+        cargarConfiguracionBase(null);
     }
 
     private void pausarCronometro() {
@@ -257,9 +298,13 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         intent.putExtra("infoAsalto", infoAsalto);
         intent.putExtra("esDescanso", esDescanso);
         intent.putExtra("isRunning", isRunning);
-
-        // Enviamos si el micro está activo
         intent.putExtra("isListening", isListening);
+
+        // Solo estamos "Ready" (color neón) si:
+        // No corre Y es el asalto 1 Y NO se ha consumido ni un segundo (mTimeLeft == mRoundDuration)
+        boolean isReady = !isRunning && mCurrentRound == 1 && !mIsResting && !mFirstRoundCompleted && mTimeLeft == mRoundDuration;
+
+        intent.putExtra("isReady", isReady);
 
         sendBroadcast(intent);
     }
