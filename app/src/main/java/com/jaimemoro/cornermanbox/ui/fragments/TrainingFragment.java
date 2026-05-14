@@ -8,6 +8,9 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -20,9 +23,13 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
+import androidx.navigation.Navigation;
 
 import com.google.android.material.card.MaterialCardView; // Nuevo
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.data.spotify.SpotifyManager; // Tu nueva clase
 import com.jaimemoro.cornermanbox.service.TimerService;
@@ -86,12 +93,10 @@ public class TrainingFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_training, container, false);
 
-        // Inicializar vistas existentes
+        // Inicializar vistas
         timerContainer = root.findViewById(R.id.timer_container);
         tvCronometro = root.findViewById(R.id.tv_timer_display);
         tvRoundCount = root.findViewById(R.id.tv_round_count);
-
-        // Inicializar nuevas vistas
         musicControlCard = root.findViewById(R.id.music_control_card);
         tvSongTitle = root.findViewById(R.id.tv_song_title);
         voiceIndicator = root.findViewById(R.id.voice_indicator);
@@ -99,6 +104,7 @@ public class TrainingFragment extends Fragment {
         // Configurar Spotify
         setupSpotify();
 
+        // Listener de Clicks
         timerContainer.setOnClickListener(v -> {
             if (!hasStarted) {
                 verificarPermisoYEmpezar();
@@ -122,6 +128,51 @@ public class TrainingFragment extends Fragment {
         return root;
     }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // IMPLEMENTACIÓN MODERNA DEL MENÚ
+        requireActivity().addMenuProvider(new MenuProvider() {
+            @Override
+            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
+                // Inflamos el XML que creaste
+                menuInflater.inflate(R.menu.training_menu, menu);
+            }
+
+            @Override
+            public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
+                if (menuItem.getItemId() == R.id.action_finalizar) {
+                    mostrarDialogoFinalizar();
+                    return true;
+                }
+                return false;
+            }
+        }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+    }
+
+    private void mostrarDialogoFinalizar() {
+        // Pausamos el crono inmediatamente para que no pierda tiempo mientras decide
+        enviarAccionServicio(TimerService.ACTION_PAUSE);
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("¿Finalizar entrenamiento?")
+                .setMessage("Se guardará tu progreso actual y volverás al inicio.")
+                .setCancelable(false) // No permite cerrar tocando fuera
+                .setPositiveButton("SÍ", (dialog, which) -> {
+                    // Detenemos el servicio y sumamos puntos
+                    enviarAccionServicio(TimerService.ACTION_STOP);
+
+                    // Volvemos al Dashboard
+                    Navigation.findNavController(requireView())
+                            .navigate(R.id.action_training_to_dashboard);
+                })
+                .setNegativeButton("NO", (dialog, which) -> {
+                    // Cerramos el diálogo y el crono se queda pausado (blanco)
+                    dialog.dismiss();
+                })
+                .show();
+    }
     private void setupSpotify() {
         spotifyManager = new SpotifyManager(requireActivity());
         spotifyManager.conectar(new SpotifyManager.SpotifyConnectionListener() {
