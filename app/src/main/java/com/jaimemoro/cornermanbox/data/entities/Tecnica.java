@@ -17,15 +17,18 @@ public class Tecnica {
     // Añadimos esto para poder mostrar una ilustración o icono de la técnica
     public int imagenResId;
 
+    public String videoUrl;
+
     // Constructor vacío requerido por Room
     public Tecnica() {}
 
     // Constructor para insertar datos fácilmente
     @Ignore
-    public Tecnica(String nombre, String descripcion, String categoria, int imagenResId) {
+    public Tecnica(String nombre, String descripcion, String categoria, int imagenResId, String videoUrl) {
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.categoria = categoria;
         this.imagenResId = imagenResId;
+        this.videoUrl = videoUrl;
     }
 }

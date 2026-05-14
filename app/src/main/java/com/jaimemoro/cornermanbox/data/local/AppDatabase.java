@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import android.util.Log;
 
-// Funcionamiento de Room por versiones
-@Database(entities = {Usuario.class, Entrenamiento.class, Tecnica.class}, version = 4, exportSchema = false)
+// Incrementamos a versión 5
+@Database(entities = {Usuario.class, Entrenamiento.class, Tecnica.class}, version = 5, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract UsuarioDao usuarioDao();
