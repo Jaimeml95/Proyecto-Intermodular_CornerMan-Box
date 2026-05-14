@@ -70,10 +70,10 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
 
         // Inicializamos los colaboradores
         repository = new CornerManRepository(getApplication());
+        // Al crear el helper aquí, Vosk empieza a cargar el modelo inmediatamente
         voiceHelper = new VoiceCommandHelper(this, this);
         spotifyManager = new SpotifyManager(this);
         spotifyManager.conectar(null);
-        // Cargar la configuración nada más nacer el servicio
         cargarConfiguracionBase(null);
     }
 
@@ -110,11 +110,32 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
     // Callback que viene del Helper
     @Override
     public void onCommandDetected(String comando) {
-        Log.d("VOICE", "Procesando: " + comando);
-        if (comando.contains("tiempo") || comando.contains("pausa")) {
+        Log.d("VOSK_SERVICE", "Comando recibido: " + comando);
+        // Como Vosk es muy preciso, podemos buscar palabras clave exactas
+        if (comando.contains("pausa") || comando.contains("tiempo") || comando.contains("stop")) {
             pausarCronometro();
-        } else if (comando.contains("box") || comando.contains("vox") || comando.contains("continuar")) {
+        } else if (comando.contains("empezar") || comando.contains("continuar")) {
             reanudarCronometro();
+        }
+        // Comandos de Música
+        else if (comando.contains("siguiente") || comando.contains("pasar") || comando.contains("próxima")) {
+            saltarCancionSpotify();
+        }
+        else if (comando.contains("anterior") || comando.contains("atrás") || comando.contains("regresar")) {
+            spotifyManager.retrocederCancionInteligente();
+            Log.d("VOSK_MUSIC", "Ejecutando retroceso inteligente");
+        }
+        else if (comando.contains("silencio")) {
+            if (spotifyManager != null) {
+                spotifyManager.pausarMusica();
+                Log.d("VOSK_MUSIC", "Orden recibida: Silencio");
+            }
+        }
+        else if (comando.contains("musica") || comando.contains("música")) {
+            if (spotifyManager != null) {
+                spotifyManager.reanudarMusica();
+                Log.d("VOSK_MUSIC", "Orden recibida: Música");
+            }
         }
     }
 
@@ -285,6 +306,20 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
                 mpCampana.seekTo(0);
             }
             mpCampana.start();
+        }
+    }
+
+    private void saltarCancionSpotify() {
+        if (spotifyManager != null) {
+            spotifyManager.saltarSiguiente();
+            Log.d("VOSK_MUSIC", "Saltando a la siguiente canción");
+        }
+    }
+
+    private void retrocederCancionSpotify() {
+        if (spotifyManager != null) {
+            spotifyManager.saltarAnterior();
+            Log.d("VOSK_MUSIC", "Volviendo a la canción anterior");
         }
     }
 

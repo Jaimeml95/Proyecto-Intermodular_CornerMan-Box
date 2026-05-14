@@ -72,6 +72,24 @@ public class SpotifyManager {
         }
     }
 
+    public void reanudarMusica() {
+        if (mSpotifyAppRemote != null && mSpotifyAppRemote.isConnected()) {
+            mSpotifyAppRemote.getPlayerApi().resume();
+        }
+    }
+
+    public void saltarSiguiente() {
+        if (mSpotifyAppRemote != null && mSpotifyAppRemote.isConnected()) {
+            mSpotifyAppRemote.getPlayerApi().skipNext();
+        }
+    }
+
+    public void saltarAnterior() {
+        if (mSpotifyAppRemote != null && mSpotifyAppRemote.isConnected()) {
+            mSpotifyAppRemote.getPlayerApi().skipPrevious();
+        }
+    }
+
     public void ajustarVolumen(float nivel) {
         if (mSpotifyAppRemote != null) {
             mSpotifyAppRemote.getConnectApi().connectSetVolume(nivel);
@@ -82,6 +100,33 @@ public class SpotifyManager {
         if (mSpotifyAppRemote != null) {
             SpotifyAppRemote.disconnect(mSpotifyAppRemote);
             mSpotifyAppRemote = null;
+        }
+    }
+
+    public void retrocederCancionInteligente() {
+        if (mSpotifyAppRemote != null && mSpotifyAppRemote.isConnected()) {
+            // Pedimos el estado actual de la reproducción
+            mSpotifyAppRemote.getPlayerApi().getPlayerState().setResultCallback(playerState -> {
+                long posicionMS = playerState.playbackPosition; // Tiempo actual en milisegundos
+
+                if (posicionMS < 10000) { // Si lleva más de 10 segundos (10,000 ms)
+                    Log.d("SPOTIFY_BOX", "Lleva más de 10s. Ejecutando doble retroceso.");
+
+                    // Primer salto: reinicia la canción
+                    mSpotifyAppRemote.getPlayerApi().skipPrevious();
+
+                    // Pequeña pausa de 300ms para que Spotify procese el primer comando
+                    // y luego lanzamos el segundo para ir a la canción anterior
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        mSpotifyAppRemote.getPlayerApi().skipPrevious();
+                    }, 300);
+
+                } else {
+                    Log.d("SPOTIFY_BOX", "Lleva menos de 10s. Salto simple.");
+                    // Salto simple: va directo a la anterior
+                    mSpotifyAppRemote.getPlayerApi().skipPrevious();
+                }
+            });
         }
     }
 

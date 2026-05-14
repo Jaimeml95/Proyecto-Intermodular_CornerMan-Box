@@ -1,124 +1,121 @@
 package com.jaimemoro.cornermanbox.utils;
 
 import android.content.Context;
-import android.content.Intent;
-import android.media.AudioManager;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.Log;
 
-import java.util.ArrayList;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+import org.vosk.android.RecognitionListener;
+import org.vosk.android.SpeechService;
+import org.vosk.android.StorageService;
 
-public class VoiceCommandHelper {
+import java.io.IOException;
+
+public class VoiceCommandHelper implements RecognitionListener {
 
     public interface VoiceCommandListener {
-        void onCommandDetected(String command);
+        void onCommandDetected(String comando);
     }
 
-    private final Context context;
     private final VoiceCommandListener listener;
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechIntent;
-    private AudioManager audioManager;
-    private boolean isEnabled = false;
-    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private Model model;
+    private SpeechService speechService;
+    private final Context context;
 
     public VoiceCommandHelper(Context context, VoiceCommandListener listener) {
         this.context = context;
         this.listener = listener;
-        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        initRecognizer();
+        initModel();
     }
 
-    private void initRecognizer() {
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
-        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
-        speechIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
-
-        // Ajustes de sensibilidad
-        speechIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500);
-
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { Log.d("VOICE", "Listo"); }
-            @Override public void onBeginningOfSpeech() { Log.d("VOICE", "Sonido detectado"); }
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() {}
-
-            @Override
-            public void onError(int error) {
-                setMute(false);
-                if (isEnabled) {
-                    mHandler.postDelayed(() -> startListening(), 500);
-                }
-            }
-
-            @Override
-            public void onResults(Bundle results) {
-                setMute(false);
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches != null && !matches.isEmpty()) {
-                    listener.onCommandDetected(matches.get(0).toLowerCase());
-                }
-                if (isEnabled) startListening();
-            }
-
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
+    private void initModel() {
+        // Usamos StorageService para mover el modelo de assets a la memoria interna
+        // 'model-es' es tu carpeta en assets
+        // 'model' es el nombre de la carpeta de destino en el teléfono
+        StorageService.unpack(context, "model-es", "model",
+                (model) -> {
+                    this.model = model;
+                    Log.d("VOSK", "¡Modelo cargado con éxito! Ya puedes empezar.");
+                },
+                (exception) -> {
+                    Log.e("VOSK", "Error crítico al desempaquetar: " + exception.getMessage());
+                    // Si ves este error, es que la estructura de carpetas en assets sigue mal
+                });
     }
 
     public void startListening() {
-        isEnabled = true;
-        mHandler.post(() -> {
-            try {
-                setMute(true);
-                speechRecognizer.startListening(speechIntent);
-            } catch (Exception e) {
-                Log.e("VOICE", "Error start: " + e.getMessage());
-            }
-        });
+        if (model == null) {
+            Log.e("VOSK", "El modelo aún no está cargado");
+            return;
+        }
+
+        try {
+            // Creamos el reconocedor con una frecuencia de muestreo de 16000Hz (estándar)
+            Recognizer rec = new Recognizer(model, 16000.0f);
+            speechService = new SpeechService(rec, 16000.0f);
+            speechService.startListening(this);
+            Log.d("VOSK", "Escucha activa y silenciosa");
+        } catch (IOException e) {
+            Log.e("VOSK", "Error al iniciar el servicio de voz: " + e.getMessage());
+        }
     }
 
     public void stopListening() {
-        isEnabled = false;
-        speechRecognizer.stopListening();
-        speechRecognizer.cancel();
-        setMute(false);
+        if (speechService != null) {
+            speechService.stop();
+            speechService = null;
+        }
     }
 
     public void destroy() {
-        isEnabled = false; // Detenemos la bandera de bucle inmediatamente
-
-        // Limpiamos cualquier reinicio de escucha que esté en cola
-        if (mHandler != null) {
-            mHandler.removeCallbacksAndMessages(null);
+        if (speechService != null) {
+            speechService.shutdown();
         }
-
-        if (speechRecognizer != null) {
-            try {
-                speechRecognizer.stopListening();
-                speechRecognizer.cancel();
-                speechRecognizer.destroy();
-            } catch (Exception e) {
-                Log.e("VOICE", "Error al destruir recognizer: " + e.getMessage());
-            }
-            speechRecognizer = null;
-        }
-        setMute(false); // Aseguramos que el sonido del sistema vuelva
     }
 
-    private void setMute(boolean mute) {
-        int mode = mute ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE;
-        audioManager.adjustStreamVolume(AudioManager.STREAM_SYSTEM, mode, 0);
-        audioManager.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, mode, 0);
+    // --- MÉTODOS DE LA INTERFAZ RecognitionListener ---
+
+    @Override
+    public void onResult(String hypothesis) {
+        // Este método se dispara cuando Vosk cree que has terminado una frase
+        procesarTexto(hypothesis);
+    }
+
+    @Override
+    public void onPartialResult(String hypothesis) {
+        // Resultados en tiempo real (mientras hablas)
+        // Podríamos usarlo para una respuesta más rápida, pero onResult es más estable
+    }
+
+    @Override
+    public void onFinalResult(String hypothesis) {
+        procesarTexto(hypothesis);
+    }
+
+    @Override
+    public void onError(Exception exception) {
+        Log.e("VOSK", "Error: " + exception.getMessage());
+    }
+
+    @Override
+    public void onTimeout() {
+        // No se usa normalmente con SpeechService
+    }
+
+    private void procesarTexto(String json) {
+        try {
+            // Vosk devuelve los resultados en formato JSON: {"text": "box"}
+            JSONObject obj = new JSONObject(json);
+            String text = obj.optString("text").toLowerCase();
+
+            if (!text.isEmpty()) {
+                Log.d("VOSK", "Detectado: " + text);
+                listener.onCommandDetected(text);
+            }
+        } catch (JSONException e) {
+            Log.e("VOSK", "Error al parsear JSON: " + e.getMessage());
+        }
     }
 }
