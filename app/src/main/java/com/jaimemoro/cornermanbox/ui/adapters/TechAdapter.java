@@ -16,15 +16,22 @@ import java.util.List;
 public class TechAdapter extends RecyclerView.Adapter<TechAdapter.TechViewHolder> {
 
     private List<Tecnica> listaTecnicas;
+    private OnItemClickListener listener; // Corregido: Usamos nuestra propia interfaz
 
-    public TechAdapter(List<Tecnica> listaTecnicas) {
+    // Interfaz para el click
+    public interface OnItemClickListener {
+        void onItemClick(Tecnica tecnica);
+    }
+
+    // Constructor corregido y cerrado
+    public TechAdapter(List<Tecnica> listaTecnicas, OnItemClickListener listener) {
         this.listaTecnicas = listaTecnicas;
+        this.listener = listener;
     }
 
     @NonNull
     @Override
     public TechViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Inflamos el diseño de la tarjeta que creamos anteriormente (item_tech.xml)
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_tech, parent, false);
         return new TechViewHolder(view);
     }
@@ -33,16 +40,21 @@ public class TechAdapter extends RecyclerView.Adapter<TechAdapter.TechViewHolder
     public void onBindViewHolder(@NonNull TechViewHolder holder, int position) {
         Tecnica tecnica = listaTecnicas.get(position);
 
-        // Asignamos los datos a la vista
         holder.tvTitulo.setText(tecnica.nombre);
         holder.tvDescripcion.setText(tecnica.descripcion);
 
-        // Seteamos la imagen (por ahora usarás ic_launcher_foreground o la que hayas definido)
         if (tecnica.imagenResId != 0) {
             holder.ivImagen.setImageResource(tecnica.imagenResId);
         } else {
             holder.ivImagen.setImageResource(R.drawable.ic_launcher_foreground);
         }
+
+        // Configuramos el click en la tarjeta (itemView)
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(tecnica);
+            }
+        });
     }
 
     @Override
@@ -50,16 +62,11 @@ public class TechAdapter extends RecyclerView.Adapter<TechAdapter.TechViewHolder
         return listaTecnicas != null ? listaTecnicas.size() : 0;
     }
 
-    /**
-     * Método fundamental para que los filtros funcionen.
-     * Cuando el ViewModel cambia la lista, avisamos al adaptador.
-     */
     public void updateList(List<Tecnica> nuevaLista) {
         this.listaTecnicas = nuevaLista;
-        notifyDataSetChanged(); // Notifica que los datos han cambiado para refrescar la UI
+        notifyDataSetChanged();
     }
 
-    // Clase interna para sujetar las vistas de cada tarjeta
     static class TechViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitulo, tvDescripcion;
         ImageView ivImagen;

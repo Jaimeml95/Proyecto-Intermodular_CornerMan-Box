@@ -72,7 +72,10 @@ public class LibraryFragment extends Fragment {
         // Observar los cambios en la lista de técnicas
         viewModel.getListaTecnicas().observe(getViewLifecycleOwner(), tecnicas -> {
             if (adapter == null) {
-                adapter = new TechAdapter(tecnicas);
+                // Pasamos la lista y la acción de click
+                adapter = new TechAdapter(tecnicas, tecnica -> {
+                    abrirVideo(tecnica.videoUrl);
+                });
                 recyclerView.setAdapter(adapter);
             } else {
                 adapter.updateList(tecnicas);
@@ -142,6 +145,15 @@ public class LibraryFragment extends Fragment {
             viewModel.filtrarPorCategoria("PASOS");
         } else if (id == R.id.tv_cat_combos) {
             viewModel.filtrarPorCategoria("COMBOS");
+        }
+    }
+
+    private void abrirVideo(String url) {
+        if (url != null && !url.isEmpty() && !url.equals("url_video")) {
+            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            startActivity(intent);
+        } else {
+            android.widget.Toast.makeText(getContext(), "Vídeo no disponible todavía", android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 }
