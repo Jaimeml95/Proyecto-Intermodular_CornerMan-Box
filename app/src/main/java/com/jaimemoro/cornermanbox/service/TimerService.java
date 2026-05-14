@@ -125,7 +125,7 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
             spotifyManager.retrocederCancionInteligente();
             Log.d("VOSK_MUSIC", "Ejecutando retroceso inteligente");
         }
-        else if (comando.contains("silencio")) {
+        else if (comando.contains("silencio") || comando.contains("para")) {
             if (spotifyManager != null) {
                 spotifyManager.pausarMusica();
                 Log.d("VOSK_MUSIC", "Orden recibida: Silencio");

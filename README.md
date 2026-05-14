@@ -1,57 +1,55 @@
-# CornerMan Box 🥊
-
-
-CornerMan Box es una aplicación Android diseñada para optimizar el entrenamiento de boxeo de forma autónoma. El proyecto busca centralizar la gestión de tiempos, la formación técnica y la motivación del atleta en una única herramienta "manos libres".
+CornerMan Box 🥊
+CornerMan Box es una aplicación Android de alto rendimiento diseñada para optimizar el entrenamiento de boxeo de forma autónoma. La aplicación centraliza la gestión de tiempos, la formación técnica y la motivación del atleta mediante un sistema totalmente manos libres, integrando reconocimiento de voz local y control musical inteligente.
 
 Este proyecto se desarrolla como Proyecto Intermodular para el Grado Superior en Desarrollo de Aplicaciones Multiplataforma (DAM).
 
-## 🚀 Estado del Proyecto: Fase 2 Finalizada
+🚀 Estado del Proyecto: Fase 3 Finalizada (Integración y Control Hands-Free)
+El repositorio actual refleja la implementación de sistemas avanzados de control y servicios de terceros, eliminando la dependencia de servicios en la nube para las funciones principales.
 
-Actualmente, el repositorio refleja la culminación de la Fase de Lógica de Negocio y Persistencia (20/04 - 28/04).
+Implementaciones Destacadas:
+Control de Voz Offline (Vosk SDK): Sustitución del motor de Google por Vosk. Esto permite un reconocimiento de comandos ("Continuar", "Tiempo", "Música", "Silencio") totalmente privado, sin cortes en el audio y sin los ruidos de sistema ("beeps") habituales.
 
-Implementaciones actuales:
+Integración con Spotify SDK: Control total de la música mediante el Spotify App Remote SDK. La música se sincroniza con el estado del entrenamiento y responde a comandos de voz.
 
-Motor de Entrenamiento Pro: Cronómetro de alta precisión gestionado mediante un Foreground Service. Soporta asaltos de 3 minutos, descansos de 1 minuto y sistema de validación (el entrenamiento solo computa tras completar el primer asalto).
+Lógica de Reproducción Inteligente: Implementación de un sistema de "retroceso inteligente" que detecta la posición de la canción (umbral de 10s) para decidir entre reiniciar el track o saltar al anterior mediante comandos de voz.
 
-Sincronización en Tiempo Real: Implementación de un protocolo de comunicación entre el Servicio y la UI para evitar parpadeos y pérdida de estado al navegar entre fragmentos.
+Automatización con Gradle (Kotlin DSL): Tarea personalizada para la generación dinámica de archivos uuid del modelo de lenguaje, asegurando la integridad del sistema de archivos de Vosk en cada compilación.
 
-Persistencia Avanzada con Room: Gestión integral del perfil de usuario, puntos acumulados y fecha del último entrenamiento.
+Motor de Entrenamiento Pro: Foreground Service de alta precisión que gestiona el cronómetro, los avisos sonoros (campana) y ahora los flujos de audio y voz de forma simultánea.
 
-Sistema de Gamificación: Lógica de rachas basada en días naturales (calendario) compatible con API 24, premiando la constancia diaria del atleta.
+Persistencia y Gamificación: Gestión de perfiles y rachas de entrenamiento mediante Room, con validación de constancia diaria.
 
-Biblioteca Técnica Dinámica: Interfaz optimizada con efectos de iluminación neón y filtrado dinámico de categorías (Golpes, Defensa, Pasos, Combos).
+✨ Características Principales (Roadmap)
+[x] Estructura y Navegación Base: Arquitectura de Fragmentos y BottomNavigationView.
 
-Navegación Robusta: Sincronización total entre el BottomNavigationView y acciones contextuales (como el botón "Empezar ya" del Dashboard).
+[x] Motor de Entrenamiento: Cronómetro de precisión mediante Foreground Service.
 
-### ✨ Características Principales (Roadmap)
+[x] Persistencia y Gamificación: Sistema de puntos y rachas mediante Room.
 
-[x] Estructura y Navegación Base.
+[x] Control Hands-Free: Comandos de voz offline mediante Vosk (Privado y Silencioso).
 
-[x] Motor de Entrenamiento: Cronómetro de alta precisión mediante Foreground Service.
+[x] Sincronización Musical: Integración avanzada con Spotify App Remote.
 
-[x] Persistencia y Gamificación: Sistema de puntos y rachas de entrenamiento mediante Room.
-
-[x] Feedback Auditivo: Implementación de sonidos de campana y avisos de tiempo.
-
-[ ] Control Hands-Free: Comandos de voz mediante Google Speech-to-Text. (Próximamente)
-
-[ ] Sincronización Musical: Integración con Spotify App Remote SDK.
-
-[ ] Biblioteca Técnica: Catálogo interactivo y detallado de técnicas.
+[x] Biblioteca Técnica: Catálogo dinámico con efectos neón, filtrado por categorías.
 
 🛠️ Tecnologías utilizadas
-Lenguaje: Java 8+
+Lenguaje: Java 8+ / Gradle Kotlin DSL
 
-IDE: Android Studio (Ladybug / Jellyfish)
+Reconocimiento de Voz: Vosk-Android SDK (Offline Speech Recognition)
 
-Base de datos: Room Persistence Library
+Música: Spotify App Remote SDK
 
-Arquitectura: Estructura de paquetes siguiendo patrones MVVM y Servicios de Primer Plano.
+Base de Datos: Room Persistence Library
 
-API Mínima: Compatible desde Android 7.0 (API 24).
+Arquitectura: Patrón MVVM, Servicios de primer plano (Foreground Services) y Callbacks asíncronos.
 
-Control de versiones: Git & GitHub
+API Mínima: Android 7.0 (API 24) para compatibilidad extendida.
 
-Autor: Jaime Moro
+📦 Instalación y Configuración del Modelo
+Para que el sistema de voz funcione, el proyecto incluye una tarea automática en el build.gradle.kts que gestiona el modelo de lenguaje en la carpeta assets/model-es. Es necesario que el desarrollador proporcione los archivos del modelo de Vosk en dicha ruta para su correcta sincronización en el dispositivo.
+
+Autor: Jaime Moro López
+
 Centro: IES AUGUSTÓBRIGA
+
 Curso: 2025/2026
