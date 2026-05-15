@@ -1,4 +1,4 @@
-package com.jaimemoro.cornermanbox.utils;
+package com.jaimemoro.cornermanbox.infrastructure.external.voice;
 
 import android.content.Context;
 import android.util.Log;
@@ -31,17 +31,13 @@ public class VoiceCommandHelper implements RecognitionListener {
     }
 
     private void initModel() {
-        // Usamos StorageService para mover el modelo de assets a la memoria interna
-        // 'model-es' es tu carpeta en assets
-        // 'model' es el nombre de la carpeta de destino en el teléfono
         StorageService.unpack(context, "model-es", "model",
                 (model) -> {
                     this.model = model;
-                    Log.d("VOSK", "¡Modelo cargado con éxito! Ya puedes empezar.");
+                    Log.d("VOSK", "Modelo cargado con éxito. Ya puedes empezar.");
                 },
                 (exception) -> {
-                    Log.e("VOSK", "Error crítico al desempaquetar: " + exception.getMessage());
-                    // Si ves este error, es que la estructura de carpetas en assets sigue mal
+                    Log.e("VOSK", "Error al desempaquetar: " + exception.getMessage());
                 });
     }
 
@@ -52,7 +48,6 @@ public class VoiceCommandHelper implements RecognitionListener {
         }
 
         try {
-            // Creamos el reconocedor con una frecuencia de muestreo de 16000Hz (estándar)
             Recognizer rec = new Recognizer(model, 16000.0f);
             speechService = new SpeechService(rec, 16000.0f);
             speechService.startListening(this);
@@ -75,19 +70,13 @@ public class VoiceCommandHelper implements RecognitionListener {
         }
     }
 
-    // --- MÉTODOS DE LA INTERFAZ RecognitionListener ---
-
     @Override
     public void onResult(String hypothesis) {
-        // Este método se dispara cuando Vosk cree que has terminado una frase
         procesarTexto(hypothesis);
     }
 
     @Override
-    public void onPartialResult(String hypothesis) {
-        // Resultados en tiempo real (mientras hablas)
-        // Podríamos usarlo para una respuesta más rápida, pero onResult es más estable
-    }
+    public void onPartialResult(String hypothesis) {}
 
     @Override
     public void onFinalResult(String hypothesis) {
@@ -100,13 +89,10 @@ public class VoiceCommandHelper implements RecognitionListener {
     }
 
     @Override
-    public void onTimeout() {
-        // No se usa normalmente con SpeechService
-    }
+    public void onTimeout() {}
 
     private void procesarTexto(String json) {
         try {
-            // Vosk devuelve los resultados en formato JSON: {"text": "box"}
             JSONObject obj = new JSONObject(json);
             String text = obj.optString("text").toLowerCase();
 

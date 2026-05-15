@@ -9,17 +9,25 @@ import android.content.pm.ServiceInfo;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.repository.CornerManRepository;
-import com.jaimemoro.cornermanbox.utils.StatsManager;
-import com.jaimemoro.cornermanbox.utils.VoiceCommandHelper;
-import com.jaimemoro.cornermanbox.data.spotify.SpotifyManager;
+import com.jaimemoro.cornermanbox.core.application.usecases.GetUsuarioUseCase;
+import com.jaimemoro.cornermanbox.core.application.usecases.RegistrarEntrenamientoUseCase;
+import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
+import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
+import com.jaimemoro.cornermanbox.infrastructure.external.voice.VoiceCommandHelper;
+import com.jaimemoro.cornermanbox.infrastructure.external.spotify.SpotifyManager;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class TimerService extends Service implements VoiceCommandHelper.VoiceCommandListener {
 
     public static final String ACTION_START = "START";
@@ -42,10 +50,15 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
     private boolean mFirstRoundCompleted = false;
     private MediaPlayer mpCampana;
     private VoiceCommandHelper voiceHelper;
-    private CornerManRepository repository;
     private SpotifyManager spotifyManager;
+
+    @Inject
+    public GetUsuarioUseCase getUsuarioUseCase;
+
+    @Inject
+    public RegistrarEntrenamientoUseCase registrarEntrenamientoUseCase;
     private boolean isListening = false; // Para el indicador de voz en el Fragment
-    private final Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     private final Runnable timerRunnable = new Runnable() {
         @Override
@@ -68,8 +81,6 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         createNotificationChannel();
         mpCampana = MediaPlayer.create(this, R.raw.campana);
 
-        // Inicializamos los colaboradores
-        repository = new CornerManRepository(getApplication());
         // Al crear el helper aquí, Vosk empieza a cargar el modelo inmediatamente
         voiceHelper = new VoiceCommandHelper(this, this);
         spotifyManager = new SpotifyManager(this);
@@ -81,29 +92,36 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
      * Carga los tiempos de la DB y refresca la interfaz sin empezar el crono.
      */
     private void cargarConfiguracionBase(Runnable postConfig) {
-        repository.getUsuario(user -> {
-            if (user != null) {
-                mRoundDuration = user.roundDurationSeconds;
-                mRestDuration = user.restDurationSeconds;
+        getUsuarioUseCase.ejecutar(new IUsuarioRepository.RepositoryCallback<Usuario>() {
+            @Override
+            public void onSuccess(Usuario user) {
+                if (user != null) {
+                    mRoundDuration = user.getRoundDurationSeconds();
+                    mRestDuration = user.getRestDurationSeconds();
 
-                // Solo sincronizamos mTimeLeft si:
-                // No está corriendo.
-                // Es el primer asalto y no estamos descansando.
-                // El tiempo está intacto (es igual al total, o es el valor inicial 180, o está en 0).
-                if (!isRunning && mCurrentRound == 1 && !mIsResting && !mFirstRoundCompleted) {
-                    if (mTimeLeft == 0 || mTimeLeft == 180 || mTimeLeft == mRoundDuration) {
-                        mTimeLeft = mRoundDuration;
+                    if (!isRunning && mCurrentRound == 1 && !mIsResting && !mFirstRoundCompleted) {
+                        if (mTimeLeft == 0 || mTimeLeft == 180 || mTimeLeft == mRoundDuration) {
+                            mTimeLeft = mRoundDuration;
+                        }
                     }
+                } else {
+                    mRoundDuration = 180;
+                    mRestDuration = 60;
+                    if (!isRunning && mCurrentRound == 1) mTimeLeft = 180;
                 }
-            } else {
-                // Valores de emergencia por si la DB falla
+
+                actualizarInterfaz();
+                if (postConfig != null) postConfig.run();
+            }
+
+            @Override
+            public void onError(Exception e) {
                 mRoundDuration = 180;
                 mRestDuration = 60;
                 if (!isRunning && mCurrentRound == 1) mTimeLeft = 180;
+                actualizarInterfaz();
+                if (postConfig != null) postConfig.run();
             }
-
-            actualizarInterfaz();
-            if (postConfig != null) postConfig.run();
         });
     }
 
@@ -241,8 +259,19 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         if (mFirstRoundCompleted) {
             new Thread(() -> {
                 Log.d("TIMER", "Registrando entrenamiento completado...");
-                StatsManager.registrarEntrenamientoCompletado(getApplicationContext());
-                // Importante: una vez sumados los puntos, reseteamos el flag
+                RegistrarEntrenamientoUseCase.ParametrosEntrenamiento params =
+                    new RegistrarEntrenamientoUseCase.ParametrosEntrenamiento(1, mRoundDuration);
+                registrarEntrenamientoUseCase.ejecutar(params, new RegistrarEntrenamientoUseCase.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d("TIMER", "Entrenamiento registrado correctamente");
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        Log.e("TIMER", "Error al registrar entrenamiento", e);
+                    }
+                });
                 mFirstRoundCompleted = false;
             }).start();
         }

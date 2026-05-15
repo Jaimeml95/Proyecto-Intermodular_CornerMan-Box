@@ -1,4 +1,4 @@
-package com.jaimemoro.cornermanbox.data.spotify;
+package com.jaimemoro.cornermanbox.infrastructure.external.spotify;
 
 import android.content.Context;
 import android.util.Log;
@@ -6,7 +6,6 @@ import android.util.Log;
 import com.spotify.android.appremote.api.ConnectionParams;
 import com.spotify.android.appremote.api.Connector;
 import com.spotify.android.appremote.api.SpotifyAppRemote;
-// Importante para detectar la canción
 import com.spotify.protocol.types.Track;
 
 public class SpotifyManager {
@@ -28,7 +27,7 @@ public class SpotifyManager {
             @Override
             public void onConnected(SpotifyAppRemote spotifyAppRemote) {
                 mSpotifyAppRemote = spotifyAppRemote;
-                Log.d(TAG, "¡Conectado a Spotify!");
+                Log.d(TAG, "Conectado a Spotify!");
                 if (listener != null) listener.onConnected();
             }
 
@@ -40,7 +39,6 @@ public class SpotifyManager {
         });
     }
 
-    // --- NUEVO: MÉTODO PARA QUE EL FRAGMENT SE SUSCRIBA A LA CANCIÓN ---
     public void suscribirseACancion(TrackCallback callback) {
         if (mSpotifyAppRemote == null || !mSpotifyAppRemote.isConnected()) {
             Log.e(TAG, "No se puede suscribir: Remote no conectado");
@@ -52,13 +50,10 @@ public class SpotifyManager {
                 .setEventCallback(playerState -> {
                     Track track = playerState.track;
                     if (track != null && callback != null) {
-                        // Avisamos al Fragment con el nombre y artista
                         callback.onTrackChanged(track.name, track.artist.name);
                     }
                 });
     }
-
-    // --- ACCIONES DE BOXEO ---
 
     public void reproducirMusica(String spotifyUri) {
         if (mSpotifyAppRemote != null) {
@@ -105,39 +100,29 @@ public class SpotifyManager {
 
     public void retrocederCancionInteligente() {
         if (mSpotifyAppRemote != null && mSpotifyAppRemote.isConnected()) {
-            // Pedimos el estado actual de la reproducción
             mSpotifyAppRemote.getPlayerApi().getPlayerState().setResultCallback(playerState -> {
-                long posicionMS = playerState.playbackPosition; // Tiempo actual en milisegundos
+                long posicionMS = playerState.playbackPosition;
 
-                if (posicionMS < 10000) { // Si lleva más de 10 segundos (10,000 ms)
+                if (posicionMS < 10000) {
                     Log.d("SPOTIFY_BOX", "Lleva más de 10s. Ejecutando doble retroceso.");
-
-                    // Primer salto: reinicia la canción
                     mSpotifyAppRemote.getPlayerApi().skipPrevious();
 
-                    // Pequeña pausa de 300ms para que Spotify procese el primer comando
-                    // y luego lanzamos el segundo para ir a la canción anterior
                     new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                         mSpotifyAppRemote.getPlayerApi().skipPrevious();
                     }, 300);
-
                 } else {
                     Log.d("SPOTIFY_BOX", "Lleva menos de 10s. Salto simple.");
-                    // Salto simple: va directo a la anterior
                     mSpotifyAppRemote.getPlayerApi().skipPrevious();
                 }
             });
         }
     }
 
-    // --- INTERFACES ---
-
     public interface SpotifyConnectionListener {
         void onConnected();
         void onFailure(Throwable error);
     }
 
-    // Nueva interfaz para enviar datos al Fragment
     public interface TrackCallback {
         void onTrackChanged(String titulo, String artista);
     }

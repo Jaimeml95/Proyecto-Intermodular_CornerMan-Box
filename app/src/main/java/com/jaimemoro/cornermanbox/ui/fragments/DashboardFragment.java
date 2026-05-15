@@ -14,33 +14,30 @@ import androidx.core.view.MenuHost;
 import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.entities.Usuario;
-import com.jaimemoro.cornermanbox.repository.CornerManRepository;
+import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
+import com.jaimemoro.cornermanbox.ui.viewmodel.StatsViewModel;
 
 public class DashboardFragment extends Fragment {
 
     private TextView tvStreakCount, tvTotalPoints, tvNextSessionText, tvGreeting;
     private ExtendedFloatingActionButton fabStart;
-    private CornerManRepository repository;
+    private StatsViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_dashboard, container, false);
 
-        // Inicializar vistas
         tvGreeting = root.findViewById(R.id.tv_greeting);
         tvStreakCount = root.findViewById(R.id.tv_streak_count);
         tvTotalPoints = root.findViewById(R.id.tv_total_points);
         tvNextSessionText = root.findViewById(R.id.tv_next_session_text);
         fabStart = root.findViewById(R.id.fab_start_training);
-
-        // Inicializar el repositorio
-        repository = new CornerManRepository(requireActivity().getApplication());
 
         if (fabStart != null) {
             fabStart.setOnClickListener(v -> {
@@ -60,7 +57,16 @@ public class DashboardFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // --- CONFIGURACIÓN DEL MENÚ DE AJUSTES ---
+        viewModel = new ViewModelProvider(this).get(StatsViewModel.class);
+
+        viewModel.getUsuario().observe(getViewLifecycleOwner(), usuario -> {
+            if (usuario != null) {
+                actualizarInterfaz(usuario);
+            } else {
+                configurarEstadoNuevoUsuario();
+            }
+        });
+
         MenuHost menuHost = requireActivity();
         menuHost.addMenuProvider(new MenuProvider() {
             @Override
@@ -82,48 +88,26 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Refresca los datos usando el repositorio
-        cargarEstadisticasUsuario();
-    }
-
-    private void cargarEstadisticasUsuario() {
-        // Delegamos la carga al repositorio (él se encarga del hilo secundario)
-        repository.getUsuario(user -> {
-            // Importante: Como el repositorio usa un Executor,
-            // volvemos al hilo principal para tocar la UI.
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    if (user != null) {
-                        actualizarInterfaz(user);
-                    } else {
-                        configurarEstadoNuevoUsuario();
-                    }
-                });
-            }
-        });
+        viewModel.cargarUsuario();
     }
 
     private void actualizarInterfaz(@NonNull Usuario user) {
-        // Nombre y Saludo
-        String nombreAMostrar = (user.nombre != null && !user.nombre.trim().isEmpty())
-                ? user.nombre
+        String nombreAMostrar = (user.getNombre() != null && !user.getNombre().trim().isEmpty())
+                ? user.getNombre()
                 : "Boxeador";
 
         if (tvGreeting != null) {
             tvGreeting.setText("¡Hola, " + nombreAMostrar + "!");
         }
 
-        // Racha
-        String textoRacha = (user.dailyStreak == 1)
+        String textoRacha = (user.getDailyStreak() == 1)
                 ? "1 Día entrenado"
-                : user.dailyStreak + " Días seguidos";
+                : user.getDailyStreak() + " Días seguidos";
         tvStreakCount.setText(textoRacha);
 
-        // Puntos
-        tvTotalPoints.setText(String.format("%,d pts", user.totalPoints));
+        tvTotalPoints.setText(String.format("%,d pts", user.getTotalPoints()));
 
-        // Texto de apoyo dinámico
-        if (user.dailyStreak == 0) {
+        if (user.getDailyStreak() == 0) {
             tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + nombreAMostrar + "!");
         } else {
             tvNextSessionText.setText("¡Mantén el ritmo, " + nombreAMostrar + "!");

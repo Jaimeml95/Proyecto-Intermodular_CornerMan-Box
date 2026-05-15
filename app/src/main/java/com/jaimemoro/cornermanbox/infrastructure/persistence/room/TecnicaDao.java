@@ -1,4 +1,4 @@
-package com.jaimemoro.cornermanbox.data.local;
+package com.jaimemoro.cornermanbox.infrastructure.persistence.room;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -12,7 +12,6 @@ public interface TecnicaDao {
     @Query("SELECT * FROM tecnicas")
     List<Tecnica> obtenerTodas();
 
-    // Filtro por categoría para los botones de la interfaz
     @Query("SELECT * FROM tecnicas WHERE categoria = :cat")
     List<Tecnica> obtenerPorCategoria(String cat);
 

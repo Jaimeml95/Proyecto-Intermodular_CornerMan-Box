@@ -1,4 +1,4 @@
-package com.jaimemoro.cornermanbox.data.local;
+package com.jaimemoro.cornermanbox.infrastructure.persistence.room;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

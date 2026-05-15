@@ -9,21 +9,19 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.entities.Tecnica;
+import com.jaimemoro.cornermanbox.core.domain.model.Tecnica;
 
 import java.util.List;
 
 public class TechAdapter extends RecyclerView.Adapter<TechAdapter.TechViewHolder> {
 
     private List<Tecnica> listaTecnicas;
-    private OnItemClickListener listener; // Corregido: Usamos nuestra propia interfaz
+    private OnItemClickListener listener;
 
-    // Interfaz para el click
     public interface OnItemClickListener {
         void onItemClick(Tecnica tecnica);
     }
 
-    // Constructor corregido y cerrado
     public TechAdapter(List<Tecnica> listaTecnicas, OnItemClickListener listener) {
         this.listaTecnicas = listaTecnicas;
         this.listener = listener;
@@ -40,16 +38,15 @@ public class TechAdapter extends RecyclerView.Adapter<TechAdapter.TechViewHolder
     public void onBindViewHolder(@NonNull TechViewHolder holder, int position) {
         Tecnica tecnica = listaTecnicas.get(position);
 
-        holder.tvTitulo.setText(tecnica.nombre);
-        holder.tvDescripcion.setText(tecnica.descripcion);
+        holder.tvTitulo.setText(tecnica.getNombre());
+        holder.tvDescripcion.setText(tecnica.getDescripcion());
 
-        if (tecnica.imagenResId != 0) {
-            holder.ivImagen.setImageResource(tecnica.imagenResId);
+        if (tecnica.getImagenResId() != 0) {
+            holder.ivImagen.setImageResource(tecnica.getImagenResId());
         } else {
             holder.ivImagen.setImageResource(R.drawable.ic_launcher_foreground);
         }
 
-        // Configuramos el click en la tarjeta (itemView)
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onItemClick(tecnica);

@@ -2,6 +2,7 @@ import java.util.UUID
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -59,6 +60,10 @@ dependencies {
 
     // Vosk
     implementation("com.alphacephei:vosk-android:0.3.47")
+
+    // Hilt
+    implementation(libs.hilt.android)
+    annotationProcessor(libs.hilt.android.compiler)
 
     implementation(libs.appcompat)
     implementation(libs.material)

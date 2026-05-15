@@ -31,7 +31,7 @@ import androidx.navigation.Navigation;
 import com.google.android.material.card.MaterialCardView; // Nuevo
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.spotify.SpotifyManager; // Tu nueva clase
+import com.jaimemoro.cornermanbox.infrastructure.external.spotify.SpotifyManager;
 import com.jaimemoro.cornermanbox.service.TimerService;
 
 public class TrainingFragment extends Fragment {

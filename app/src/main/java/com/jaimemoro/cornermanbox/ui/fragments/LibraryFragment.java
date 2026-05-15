@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.viewmodel.TechViewModel;
+import com.jaimemoro.cornermanbox.ui.viewmodel.TechViewModel;
 import com.jaimemoro.cornermanbox.ui.adapters.TechAdapter;
 
 import java.util.ArrayList;
@@ -74,7 +74,7 @@ public class LibraryFragment extends Fragment {
             if (adapter == null) {
                 // Pasamos la lista y la acción de click
                 adapter = new TechAdapter(tecnicas, tecnica -> {
-                    abrirVideo(tecnica.videoUrl);
+                    abrirVideo(tecnica.getVideoUrl());
                 });
                 recyclerView.setAdapter(adapter);
             } else {

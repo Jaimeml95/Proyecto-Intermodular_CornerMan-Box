@@ -15,17 +15,26 @@ import androidx.navigation.Navigation;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.entities.Usuario;
-import com.jaimemoro.cornermanbox.data.local.AppDatabase;
+import com.jaimemoro.cornermanbox.core.application.usecases.GetUsuarioUseCase;
+import com.jaimemoro.cornermanbox.core.application.usecases.UpdateUsuarioUseCase;
+import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 
-import java.util.concurrent.Executors;
+import javax.inject.Inject;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class SettingsFragment extends Fragment {
 
     private TextInputEditText etNombre, etRoundTime, etRestTime;
     private MaterialButton btnGuardar;
-    private AppDatabase db;
-    private Usuario usuarioActual; // Guardamos una referencia local
+    private Usuario usuarioActual;
+
+    @Inject
+    public GetUsuarioUseCase getUsuarioUseCase;
+
+    @Inject
+    public UpdateUsuarioUseCase updateUsuarioUseCase;
 
     @Nullable
     @Override
@@ -37,9 +46,6 @@ public class SettingsFragment extends Fragment {
         etRestTime = view.findViewById(R.id.etRestTime);
         btnGuardar = view.findViewById(R.id.btnGuardar);
 
-        // USAMOS EL SINGLETON (Importante para evitar errores de integridad)
-        db = AppDatabase.getInstance(requireContext());
-
         cargarDatosActuales();
 
         btnGuardar.setOnClickListener(v -> guardarAjustes());
@@ -48,23 +54,34 @@ public class SettingsFragment extends Fragment {
     }
 
     private void cargarDatosActuales() {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            usuarioActual = db.usuarioDao().getUsuario();
+        getUsuarioUseCase.ejecutar(new com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository.RepositoryCallback<Usuario>() {
+            @Override
+            public void onSuccess(Usuario user) {
+                usuarioActual = user;
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        if (usuarioActual != null) {
+                            etNombre.setText(usuarioActual.getNombre());
+                            etRoundTime.setText(String.valueOf(usuarioActual.getRoundDurationSeconds()));
+                            etRestTime.setText(String.valueOf(usuarioActual.getRestDurationSeconds()));
+                        } else {
+                            etNombre.setText("Boxeador");
+                            etRoundTime.setText("180");
+                            etRestTime.setText("60");
+                        }
+                    });
+                }
+            }
 
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    if (usuarioActual != null) {
-                        // Si existe, ponemos sus datos
-                        etNombre.setText(usuarioActual.nombre);
-                        etRoundTime.setText(String.valueOf(usuarioActual.roundDurationSeconds));
-                        etRestTime.setText(String.valueOf(usuarioActual.restDurationSeconds));
-                    } else {
-                        // Si es null (primer inicio), ponemos los valores por defecto manuales
+            @Override
+            public void onError(Exception e) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
                         etNombre.setText("Boxeador");
                         etRoundTime.setText("180");
                         etRestTime.setText("60");
-                    }
-                });
+                    });
+                }
             }
         });
     }
@@ -79,33 +96,31 @@ public class SettingsFragment extends Fragment {
             return;
         }
 
-        Executors.newSingleThreadExecutor().execute(() -> {
-            // Si el usuario no existe todavía en la DB, creamos uno nuevo
-            if (usuarioActual == null) {
-                usuarioActual = new Usuario();
+        if (usuarioActual == null) {
+            usuarioActual = new Usuario();
+        }
+
+        usuarioActual.setNombre(nombre);
+        usuarioActual.setRoundDurationSeconds(Integer.parseInt(rTime));
+        usuarioActual.setRestDurationSeconds(Integer.parseInt(dTime));
+
+        updateUsuarioUseCase.ejecutar(usuarioActual, new com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository.RepositoryCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
             }
 
-            usuarioActual.nombre = nombre;
-            usuarioActual.roundDurationSeconds = Integer.parseInt(rTime);
-            usuarioActual.restDurationSeconds = Integer.parseInt(dTime);
-
-            // Insertamos o actualizamos según corresponda
-            if (usuarioActual.id == 0) {
-                db.usuarioDao().insertUsuario(usuarioActual);
-            } else {
-                db.usuarioDao().updateUsuario(usuarioActual);
-            }
-
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    ocultarTeclado();
-                    Toast.makeText(getContext(), "Ajustes guardados correctamente", Toast.LENGTH_SHORT).show();
-
-                    // VOLVER AL DASHBOARD
-                    Navigation.findNavController(requireView()).navigateUp();
-                });
+            @Override
+            public void onError(Exception e) {
             }
         });
+
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                ocultarTeclado();
+                Toast.makeText(getContext(), "Ajustes guardados correctamente", Toast.LENGTH_SHORT).show();
+                Navigation.findNavController(requireView()).navigateUp();
+            });
+        }
     }
 
     private void ocultarTeclado() {
