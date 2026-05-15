@@ -2,6 +2,7 @@ package com.jaimemoro.cornermanbox.core.application.usecases;
 
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 
 public class UpdateUsuarioUseCase {
 
@@ -11,7 +12,7 @@ public class UpdateUsuarioUseCase {
         this.usuarioRepository = usuarioRepository;
     }
 
-    public void ejecutar(Usuario usuario, IUsuarioRepository.RepositoryCallback<Void> callback) {
+    public void ejecutar(Usuario usuario, RepositoryCallback<Void> callback) {
         usuarioRepository.updateUsuario(usuario);
         callback.onSuccess(null);
     }

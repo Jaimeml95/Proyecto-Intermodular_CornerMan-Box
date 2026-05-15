@@ -2,20 +2,22 @@ package com.jaimemoro.cornermanbox.core.application.usecases;
 
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 
 public class GetUsuarioUseCase {
 
     private final IUsuarioRepository usuarioRepository;
+    private final CalcularRachaUseCase calcularRachaUseCase;
 
-    public GetUsuarioUseCase(IUsuarioRepository usuarioRepository) {
+    public GetUsuarioUseCase(IUsuarioRepository usuarioRepository, CalcularRachaUseCase calcularRachaUseCase) {
         this.usuarioRepository = usuarioRepository;
+        this.calcularRachaUseCase = calcularRachaUseCase;
     }
 
-    public void ejecutar(IUsuarioRepository.RepositoryCallback<Usuario> callback) {
-        usuarioRepository.getUsuario(new IUsuarioRepository.RepositoryCallback<Usuario>() {
+    public void ejecutar(RepositoryCallback<Usuario> callback) {
+        usuarioRepository.getUsuario(new RepositoryCallback<Usuario>() {
             @Override
             public void onSuccess(Usuario result) {
-                CalcularRachaUseCase calcularRachaUseCase = new CalcularRachaUseCase();
                 if (!calcularRachaUseCase.validarRacha(result)) {
                     result.setDailyStreak(0);
                     usuarioRepository.updateUsuario(result);

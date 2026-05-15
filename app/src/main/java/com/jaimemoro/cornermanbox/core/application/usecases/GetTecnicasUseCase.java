@@ -2,6 +2,7 @@ package com.jaimemoro.cornermanbox.core.application.usecases;
 
 import com.jaimemoro.cornermanbox.core.domain.model.Tecnica;
 import com.jaimemoro.cornermanbox.core.domain.repository.ITecnicaRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 import java.util.List;
 
 public class GetTecnicasUseCase {
@@ -12,11 +13,11 @@ public class GetTecnicasUseCase {
         this.tecnicaRepository = tecnicaRepository;
     }
 
-    public void obtenerTodas(ITecnicaRepository.RepositoryCallback<List<Tecnica>> callback) {
+    public void obtenerTodas(RepositoryCallback<List<Tecnica>> callback) {
         tecnicaRepository.getAllTecnicas(callback);
     }
 
-    public void obtenerPorCategoria(String categoria, ITecnicaRepository.RepositoryCallback<List<Tecnica>> callback) {
+    public void obtenerPorCategoria(String categoria, RepositoryCallback<List<Tecnica>> callback) {
         tecnicaRepository.getTecnicasByCategoria(categoria, callback);
     }
 }

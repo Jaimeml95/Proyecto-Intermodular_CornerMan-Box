@@ -22,6 +22,9 @@ import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.ui.viewmodel.StatsViewModel;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class DashboardFragment extends Fragment {
 
     private TextView tvStreakCount, tvTotalPoints, tvNextSessionText, tvGreeting;

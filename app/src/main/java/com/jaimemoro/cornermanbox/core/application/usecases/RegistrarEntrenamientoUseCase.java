@@ -4,6 +4,7 @@ import com.jaimemoro.cornermanbox.core.domain.model.Entrenamiento;
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
 import com.jaimemoro.cornermanbox.core.domain.repository.IEntrenamientoRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 
 public class RegistrarEntrenamientoUseCase {
 
@@ -21,7 +22,7 @@ public class RegistrarEntrenamientoUseCase {
     }
 
     public void ejecutar(ParametrosEntrenamiento parametros, Callback callback) {
-        usuarioRepository.getUsuario(new IUsuarioRepository.RepositoryCallback<Usuario>() {
+        usuarioRepository.getUsuario(new RepositoryCallback<Usuario>() {
             @Override
             public void onSuccess(Usuario usuario) {
                 CalcularRachaUseCase.ResultadoRacha resultado = calcularRachaUseCase.calcular(usuario);

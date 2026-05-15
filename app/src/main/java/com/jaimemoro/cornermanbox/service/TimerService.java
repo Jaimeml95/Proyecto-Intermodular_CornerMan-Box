@@ -20,6 +20,7 @@ import com.jaimemoro.cornermanbox.core.application.usecases.GetUsuarioUseCase;
 import com.jaimemoro.cornermanbox.core.application.usecases.RegistrarEntrenamientoUseCase;
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 import com.jaimemoro.cornermanbox.infrastructure.external.voice.VoiceCommandHelper;
 import com.jaimemoro.cornermanbox.infrastructure.external.spotify.SpotifyManager;
 
@@ -92,7 +93,7 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
      * Carga los tiempos de la DB y refresca la interfaz sin empezar el crono.
      */
     private void cargarConfiguracionBase(Runnable postConfig) {
-        getUsuarioUseCase.ejecutar(new IUsuarioRepository.RepositoryCallback<Usuario>() {
+        getUsuarioUseCase.ejecutar(new RepositoryCallback<Usuario>() {
             @Override
             public void onSuccess(Usuario user) {
                 if (user != null) {

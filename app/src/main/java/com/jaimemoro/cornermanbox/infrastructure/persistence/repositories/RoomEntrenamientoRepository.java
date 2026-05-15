@@ -3,6 +3,7 @@ package com.jaimemoro.cornermanbox.infrastructure.persistence.repositories;
 import android.app.Application;
 import com.jaimemoro.cornermanbox.core.domain.model.Entrenamiento;
 import com.jaimemoro.cornermanbox.core.domain.repository.IEntrenamientoRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.room.AppDatabase;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.mappers.EntrenamientoMapper;
 import java.util.List;
@@ -31,7 +32,7 @@ public class RoomEntrenamientoRepository implements IEntrenamientoRepository {
 
     @Override
     public void getHistorialEntrenamientos(
-            IEntrenamientoRepository.RepositoryCallback<List<Entrenamiento>> callback) {
+            RepositoryCallback<List<Entrenamiento>> callback) {
         executor.execute(() -> {
             try {
                 List<com.jaimemoro.cornermanbox.data.entities.Entrenamiento> entities =

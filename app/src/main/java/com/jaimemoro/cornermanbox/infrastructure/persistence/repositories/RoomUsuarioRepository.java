@@ -3,6 +3,7 @@ package com.jaimemoro.cornermanbox.infrastructure.persistence.repositories;
 import android.app.Application;
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
 import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.room.AppDatabase;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.mappers.UsuarioMapper;
 import java.util.concurrent.ExecutorService;

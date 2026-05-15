@@ -33,7 +33,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.jaimemoro.cornermanbox.R;
 import com.jaimemoro.cornermanbox.infrastructure.external.spotify.SpotifyManager;
 import com.jaimemoro.cornermanbox.service.TimerService;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class TrainingFragment extends Fragment {
 
     private FrameLayout timerContainer;

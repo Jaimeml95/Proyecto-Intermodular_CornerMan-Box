@@ -3,6 +3,7 @@ package com.jaimemoro.cornermanbox.infrastructure.persistence.repositories;
 import android.app.Application;
 import com.jaimemoro.cornermanbox.core.domain.model.Tecnica;
 import com.jaimemoro.cornermanbox.core.domain.repository.ITecnicaRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.room.AppDatabase;
 import com.jaimemoro.cornermanbox.infrastructure.persistence.mappers.TecnicaMapper;
 import java.util.List;
@@ -22,7 +23,7 @@ public class RoomTecnicaRepository implements ITecnicaRepository {
     }
 
     @Override
-    public void getAllTecnicas(ITecnicaRepository.RepositoryCallback<List<Tecnica>> callback) {
+    public void getAllTecnicas(RepositoryCallback<List<Tecnica>> callback) {
         executor.execute(() -> {
             try {
                 List<com.jaimemoro.cornermanbox.data.entities.Tecnica> entities =
@@ -37,7 +38,7 @@ public class RoomTecnicaRepository implements ITecnicaRepository {
 
     @Override
     public void getTecnicasByCategoria(String categoria,
-            ITecnicaRepository.RepositoryCallback<List<Tecnica>> callback) {
+            RepositoryCallback<List<Tecnica>> callback) {
         executor.execute(() -> {
             try {
                 List<com.jaimemoro.cornermanbox.data.entities.Tecnica> entities =
@@ -51,7 +52,7 @@ public class RoomTecnicaRepository implements ITecnicaRepository {
     }
 
     @Override
-    public void insertTecnicas(List<Tecnica> tecnicas) {
+    public void insertarVarias(List<Tecnica> tecnicas) {
         executor.execute(() -> {
             database.tecnicaDao().insertarVarias(mapper.toEntityList(tecnicas));
         });

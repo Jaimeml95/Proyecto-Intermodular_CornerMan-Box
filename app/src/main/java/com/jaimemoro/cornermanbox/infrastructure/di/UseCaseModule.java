@@ -28,8 +28,8 @@ public class UseCaseModule {
 
     @Provides
     @Singleton
-    public GetUsuarioUseCase provideGetUsuarioUseCase(IUsuarioRepository repository) {
-        return new GetUsuarioUseCase(repository);
+    public GetUsuarioUseCase provideGetUsuarioUseCase(IUsuarioRepository repository, CalcularRachaUseCase calcularRachaUseCase) {
+        return new GetUsuarioUseCase(repository, calcularRachaUseCase);
     }
 
     @Provides

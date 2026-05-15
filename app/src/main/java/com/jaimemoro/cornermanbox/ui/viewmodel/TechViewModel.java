@@ -1,14 +1,12 @@
 package com.jaimemoro.cornermanbox.ui.viewmodel;
 
-import android.app.Application;
-import androidx.annotation.NonNull;
-import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
 
 import com.jaimemoro.cornermanbox.core.application.usecases.GetTecnicasUseCase;
 import com.jaimemoro.cornermanbox.core.domain.model.Tecnica;
-import com.jaimemoro.cornermanbox.core.domain.repository.ITecnicaRepository;
+import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,14 +16,13 @@ import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
-public class TechViewModel extends AndroidViewModel {
+public class TechViewModel extends ViewModel {
 
     private final GetTecnicasUseCase getTecnicasUseCase;
     private final MutableLiveData<List<Tecnica>> listaTecnicas = new MutableLiveData<>();
 
     @Inject
-    public TechViewModel(Application application, GetTecnicasUseCase getTecnicasUseCase) {
-        super(application);
+    public TechViewModel(GetTecnicasUseCase getTecnicasUseCase) {
         this.getTecnicasUseCase = getTecnicasUseCase;
         filtrarPorCategoria("GOLPES");
     }
@@ -35,7 +32,7 @@ public class TechViewModel extends AndroidViewModel {
     }
 
     public void cargarTodas() {
-        getTecnicasUseCase.obtenerTodas(new ITecnicaRepository.RepositoryCallback<List<Tecnica>>() {
+        getTecnicasUseCase.obtenerTodas(new RepositoryCallback<List<Tecnica>>() {
             @Override
             public void onSuccess(List<Tecnica> result) {
                 listaTecnicas.postValue(result);
@@ -48,7 +45,7 @@ public class TechViewModel extends AndroidViewModel {
     }
 
     public void filtrarPorCategoria(String categoria) {
-        getTecnicasUseCase.obtenerPorCategoria(categoria, new ITecnicaRepository.RepositoryCallback<List<Tecnica>>() {
+        getTecnicasUseCase.obtenerPorCategoria(categoria, new RepositoryCallback<List<Tecnica>>() {
             @Override
             public void onSuccess(List<Tecnica> result) {
                 listaTecnicas.postValue(result);
@@ -61,7 +58,7 @@ public class TechViewModel extends AndroidViewModel {
     }
 
     public void buscarTecnica(String query) {
-        getTecnicasUseCase.obtenerTodas(new ITecnicaRepository.RepositoryCallback<List<Tecnica>>() {
+        getTecnicasUseCase.obtenerTodas(new RepositoryCallback<List<Tecnica>>() {
             @Override
             public void onSuccess(List<Tecnica> todas) {
                 List<Tecnica> filtradas = todas.stream()

@@ -5,9 +5,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.jaimemoro.cornermanbox.core.application.usecases.GetUsuarioUseCase;
-import com.jaimemoro.cornermanbox.core.application.usecases.RegistrarEntrenamientoUseCase;
+import com.jaimemoro.cornermanbox.core.application.usecases.UpdateUsuarioUseCase;
 import com.jaimemoro.cornermanbox.core.domain.model.Usuario;
-import com.jaimemoro.cornermanbox.core.domain.repository.IUsuarioRepository;
 import com.jaimemoro.cornermanbox.core.domain.repository.RepositoryCallback;
 
 import javax.inject.Inject;
@@ -15,23 +14,27 @@ import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
-public class StatsViewModel extends ViewModel {
+public class SettingsViewModel extends ViewModel {
 
     private final GetUsuarioUseCase getUsuarioUseCase;
-    private final RegistrarEntrenamientoUseCase registrarEntrenamientoUseCase;
+    private final UpdateUsuarioUseCase updateUsuarioUseCase;
+
     private final MutableLiveData<Usuario> usuario = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> saveSuccess = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
 
     @Inject
-    public StatsViewModel(
-            GetUsuarioUseCase getUsuarioUseCase,
-            RegistrarEntrenamientoUseCase registrarEntrenamientoUseCase) {
+    public SettingsViewModel(GetUsuarioUseCase getUsuarioUseCase, UpdateUsuarioUseCase updateUsuarioUseCase) {
         this.getUsuarioUseCase = getUsuarioUseCase;
-        this.registrarEntrenamientoUseCase = registrarEntrenamientoUseCase;
+        this.updateUsuarioUseCase = updateUsuarioUseCase;
     }
 
     public LiveData<Usuario> getUsuario() {
         return usuario;
+    }
+
+    public LiveData<Boolean> getSaveSuccess() {
+        return saveSuccess;
     }
 
     public LiveData<String> getError() {
@@ -52,14 +55,11 @@ public class StatsViewModel extends ViewModel {
         });
     }
 
-    public void registrarEntrenamiento(int roundsCompletados, int duracionTotalSegundos) {
-        RegistrarEntrenamientoUseCase.ParametrosEntrenamiento params =
-            new RegistrarEntrenamientoUseCase.ParametrosEntrenamiento(roundsCompletados, duracionTotalSegundos);
-
-        registrarEntrenamientoUseCase.ejecutar(params, new RegistrarEntrenamientoUseCase.Callback() {
+    public void guardarUsuario(Usuario user) {
+        updateUsuarioUseCase.ejecutar(user, new RepositoryCallback<Void>() {
             @Override
-            public void onSuccess() {
-                cargarUsuario();
+            public void onSuccess(Void result) {
+                saveSuccess.postValue(true);
             }
 
             @Override
