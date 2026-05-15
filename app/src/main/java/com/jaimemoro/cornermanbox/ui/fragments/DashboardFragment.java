@@ -8,39 +8,38 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.MenuHost;
 import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.jaimemoro.cornermanbox.R;
-import com.jaimemoro.cornermanbox.data.entities.Usuario;
-import com.jaimemoro.cornermanbox.repository.CornerManRepository;
+import com.jaimemoro.cornermanbox.viewmodel.DashboardViewModel;
 
 public class DashboardFragment extends Fragment {
 
     private TextView tvStreakCount, tvTotalPoints, tvNextSessionText, tvGreeting;
     private ExtendedFloatingActionButton fabStart;
-    private CornerManRepository repository;
+    private DashboardViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_dashboard, container, false);
 
-        // Inicializar vistas
         tvGreeting = root.findViewById(R.id.tv_greeting);
         tvStreakCount = root.findViewById(R.id.tv_streak_count);
         tvTotalPoints = root.findViewById(R.id.tv_total_points);
         tvNextSessionText = root.findViewById(R.id.tv_next_session_text);
         fabStart = root.findViewById(R.id.fab_start_training);
 
-        // Inicializar el repositorio
-        repository = new CornerManRepository(requireActivity().getApplication());
+        viewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
 
         if (fabStart != null) {
             fabStart.setOnClickListener(v -> {
@@ -60,7 +59,6 @@ public class DashboardFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // --- CONFIGURACIÓN DEL MENÚ DE AJUSTES ---
         MenuHost menuHost = requireActivity();
         menuHost.addMenuProvider(new MenuProvider() {
             @Override
@@ -77,57 +75,32 @@ public class DashboardFragment extends Fragment {
                 return false;
             }
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+
+        viewModel.getUsuario().observe(getViewLifecycleOwner(), usuario -> {
+            if (usuario != null) {
+                actualizarInterfaz();
+            } else {
+                configurarEstadoNuevoUsuario();
+            }
+        });
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // Refresca los datos usando el repositorio
-        cargarEstadisticasUsuario();
+        viewModel.cargarUsuario();
     }
 
-    private void cargarEstadisticasUsuario() {
-        // Delegamos la carga al repositorio (él se encarga del hilo secundario)
-        repository.getUsuario(user -> {
-            // Importante: Como el repositorio usa un Executor,
-            // volvemos al hilo principal para tocar la UI.
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    if (user != null) {
-                        actualizarInterfaz(user);
-                    } else {
-                        configurarEstadoNuevoUsuario();
-                    }
-                });
-            }
-        });
-    }
-
-    private void actualizarInterfaz(@NonNull Usuario user) {
-        // Nombre y Saludo
-        String nombreAMostrar = (user.nombre != null && !user.nombre.trim().isEmpty())
-                ? user.nombre
-                : "Boxeador";
+    private void actualizarInterfaz() {
+        String nombreMostrar = viewModel.getNombreMostrar();
 
         if (tvGreeting != null) {
-            tvGreeting.setText("¡Hola, " + nombreAMostrar + "!");
+            tvGreeting.setText("¡Hola, " + nombreMostrar + "!");
         }
 
-        // Racha
-        String textoRacha = (user.dailyStreak == 1)
-                ? "1 Día entrenado"
-                : user.dailyStreak + " Días seguidos";
-        tvStreakCount.setText(textoRacha);
-
-        // Puntos
-        tvTotalPoints.setText(String.format("%,d pts", user.totalPoints));
-
-        // Texto de apoyo dinámico
-        if (user.dailyStreak == 0) {
-            tvNextSessionText.setText("Has perdido la racha. ¡A por ello de nuevo, " + nombreAMostrar + "!");
-        } else {
-            tvNextSessionText.setText("¡Mantén el ritmo, " + nombreAMostrar + "!");
-        }
+        tvStreakCount.setText(viewModel.getTextoRacha());
+        tvTotalPoints.setText(viewModel.getTextoPuntos());
+        tvNextSessionText.setText(viewModel.getTextoApoyo());
     }
 
     private void configurarEstadoNuevoUsuario() {

@@ -32,25 +32,56 @@ public class CornerManRepository {
 
     public void getUsuario(RepositoryCallback<Usuario> callback) {
         executorService.execute(() -> {
-            Usuario usuario = usuarioDao.getUsuario();
-            callback.onComplete(usuario);
+            try {
+                Usuario usuario = usuarioDao.getUsuario();
+                callback.onComplete(usuario);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
         });
     }
 
     public void updateUsuario(Usuario usuario) {
-        executorService.execute(() -> usuarioDao.updateUsuario(usuario));
+        executorService.execute(() -> {
+            try {
+                usuarioDao.updateUsuario(usuario);
+            } catch (Exception e) {
+                // Silent fail para operaciones de actualización
+            }
+        });
+    }
+
+    public void insertUsuario(Usuario usuario, RepositoryCallback<Boolean> callback) {
+        executorService.execute(() -> {
+            try {
+                usuarioDao.insertUsuario(usuario);
+                callback.onComplete(true);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
+        });
     }
 
     // --- OPERACIONES DE ENTRENAMIENTO ---
 
     public void insertEntrenamiento(Entrenamiento entrenamiento) {
-        executorService.execute(() -> entrenamientoDao.insertEntrenamiento(entrenamiento));
+        executorService.execute(() -> {
+            try {
+                entrenamientoDao.insertEntrenamiento(entrenamiento);
+            } catch (Exception e) {
+                // Silent fail
+            }
+        });
     }
 
     public void getHistorialEntrenamientos(RepositoryCallback<List<Entrenamiento>> callback) {
         executorService.execute(() -> {
-            List<Entrenamiento> historial = entrenamientoDao.getAllEntrenamientos();
-            callback.onComplete(historial);
+            try {
+                List<Entrenamiento> historial = entrenamientoDao.getAllEntrenamientos();
+                callback.onComplete(historial);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
         });
     }
 
@@ -58,15 +89,23 @@ public class CornerManRepository {
 
     public void getAllTecnicas(RepositoryCallback<List<Tecnica>> callback) {
         executorService.execute(() -> {
-            List<Tecnica> tecnicas = tecnicaDao.obtenerTodas();
-            callback.onComplete(tecnicas);
+            try {
+                List<Tecnica> tecnicas = tecnicaDao.obtenerTodas();
+                callback.onComplete(tecnicas);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
         });
     }
 
     public void getTecnicasByCategoria(String categoria, RepositoryCallback<List<Tecnica>> callback) {
         executorService.execute(() -> {
-            List<Tecnica> filtradas = tecnicaDao.obtenerPorCategoria(categoria);
-            callback.onComplete(filtradas);
+            try {
+                List<Tecnica> filtradas = tecnicaDao.obtenerPorCategoria(categoria);
+                callback.onComplete(filtradas);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
         });
     }
 
@@ -77,5 +116,8 @@ public class CornerManRepository {
     // --- INTERFAZ PARA RETORNAR DATOS ---
     public interface RepositoryCallback<T> {
         void onComplete(T result);
+        default void onError(Exception e) {
+            // Default vacío para mantener compatibilidad hacia atrás
+        }
     }
 }
