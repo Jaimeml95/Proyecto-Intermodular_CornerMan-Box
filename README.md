@@ -1,9 +1,11 @@
-CornerMan Box 🥊
+
+# CornerMan Box 🥊
+
 CornerMan Box es una aplicación Android de alto rendimiento diseñada para optimizar el entrenamiento de boxeo de forma autónoma. La aplicación centraliza la gestión de tiempos, la formación técnica y la motivación del atleta mediante un sistema totalmente manos libres, integrando reconocimiento de voz local y control musical inteligente.
 
 Este proyecto se desarrolla como Proyecto Intermodular para el Grado Superior en Desarrollo de Aplicaciones Multiplataforma (DAM).
 
-🚀 Estado del Proyecto: Fase 3 Finalizada (Integración y Control Hands-Free)
+## 🚀 Estado del Proyecto: Fase 3 Finalizada (Integración y Control Hands-Free)
 El repositorio actual refleja la implementación de sistemas avanzados de control y servicios de terceros, eliminando la dependencia de servicios en la nube para las funciones principales.
 
 Implementaciones Destacadas:
@@ -19,7 +21,7 @@ Motor de Entrenamiento Pro: Foreground Service de alta precisión que gestiona e
 
 Persistencia y Gamificación: Gestión de perfiles y rachas de entrenamiento mediante Room, con validación de constancia diaria.
 
-✨ Características Principales (Roadmap)
+## ✨ Características Principales (Roadmap)
 [x] Estructura y Navegación Base: Arquitectura de Fragmentos y BottomNavigationView.
 
 [x] Motor de Entrenamiento: Cronómetro de precisión mediante Foreground Service.
@@ -32,7 +34,7 @@ Persistencia y Gamificación: Gestión de perfiles y rachas de entrenamiento med
 
 [x] Biblioteca Técnica: Catálogo dinámico con efectos neón, filtrado por categorías.
 
-🛠️ Tecnologías utilizadas
+## 🛠️ Tecnologías utilizadas
 Lenguaje: Java 8+ / Gradle Kotlin DSL
 
 Reconocimiento de Voz: Vosk-Android SDK (Offline Speech Recognition)
@@ -45,11 +47,11 @@ Arquitectura: Patrón MVVM, Servicios de primer plano (Foreground Services) y Ca
 
 API Mínima: Android 7.0 (API 24) para compatibilidad extendida.
 
-📦 Instalación y Configuración del Modelo
+## 📦 Instalación y Configuración del Modelo
 Para que el sistema de voz funcione, el proyecto incluye una tarea automática en el build.gradle.kts que gestiona el modelo de lenguaje en la carpeta assets/model-es. Es necesario que el desarrollador proporcione los archivos del modelo de Vosk en dicha ruta para su correcta sincronización en el dispositivo.
 
-Autor: Jaime Moro López
+### Autor: Jaime Moro López
 
-Centro: IES AUGUSTÓBRIGA
+#### Centro: IES AUGUSTÓBRIGA
 
-Curso: 2025/2026
+#### Curso: 2025/2026
