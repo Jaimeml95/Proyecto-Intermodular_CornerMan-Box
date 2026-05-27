@@ -107,36 +107,37 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
         });
     }
 
-    // Callback que viene del Helper
     @Override
     public void onCommandDetected(String comando) {
-        Log.d("VOSK_SERVICE", "Comando recibido: " + comando);
-        // Como Vosk es muy preciso, podemos buscar palabras clave exactas
-        if (comando.contains("pausa") || comando.contains("tiempo") || comando.contains("stop")) {
-            pausarCronometro();
-        } else if (comando.contains("empezar") || comando.contains("continuar")) {
-            reanudarCronometro();
-        }
-        // Comandos de Música
-        else if (comando.contains("siguiente") || comando.contains("pasar") || comando.contains("próxima")) {
-            saltarCancionSpotify();
-        }
-        else if (comando.contains("anterior") || comando.contains("atrás") || comando.contains("regresar")) {
-            spotifyManager.retrocederCancionInteligente();
-            Log.d("VOSK_MUSIC", "Ejecutando retroceso inteligente");
-        }
-        else if (comando.contains("silencio") || comando.contains("para")) {
-            if (spotifyManager != null) {
-                spotifyManager.pausarMusica();
-                Log.d("VOSK_MUSIC", "Orden recibida: Silencio");
+        // Forzamos a que todo lo que altere el entrenamiento ocurra en el hilo principal para optimizar los tiempos.
+        mHandler.post(() -> {
+            Log.d("VOSK_SERVICE", "Comando procesado en Main Thread: " + comando);
+
+            if (comando.contains("pausa") || comando.contains("tiempo") || comando.contains("stop")) {
+                pausarCronometro();
+            } else if (comando.contains("empezar") || comando.contains("continuar")) {
+                reanudarCronometro();
             }
-        }
-        else if (comando.contains("musica") || comando.contains("música")) {
-            if (spotifyManager != null) {
-                spotifyManager.reanudarMusica();
-                Log.d("VOSK_MUSIC", "Orden recibida: Música");
+            else if (comando.contains("siguiente") || comando.contains("pasar") || comando.contains("próxima")) {
+                saltarCancionSpotify();
             }
-        }
+            else if (comando.contains("anterior") || comando.contains("atrás") || comando.contains("regresar")) {
+                spotifyManager.retrocederCancionInteligente();
+                Log.d("VOSK_MUSIC", "Ejecutando retroceso inteligente");
+            }
+            else if (comando.contains("silencio") || comando.contains("para")) {
+                if (spotifyManager != null) {
+                    spotifyManager.pausarMusica();
+                    Log.d("VOSK_MUSIC", "Orden recibida: Silencio");
+                }
+            }
+            else if (comando.contains("musica") || comando.contains("música")) {
+                if (spotifyManager != null) {
+                    spotifyManager.reanudarMusica();
+                    Log.d("VOSK_MUSIC", "Orden recibida: Música");
+                }
+            }
+        });
     }
 
     @Override
@@ -181,7 +182,7 @@ public class TimerService extends Service implements VoiceCommandHelper.VoiceCom
                 .build();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
         } else {
             startForeground(NOTIFICATION_ID, notification);
         }
